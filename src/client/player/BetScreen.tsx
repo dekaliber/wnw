@@ -60,6 +60,7 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
   return (
     <main className="screen screen--bet">
       <PhaseHeader
+        game={game}
         view={view}
         seconds={seconds}
         title={round.isTiebreak ? 'Sudden death' : `Question ${round.number}`}

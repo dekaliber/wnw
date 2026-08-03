@@ -1,8 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { Question } from '../shared/types.ts'
+import { QuestionLedger, fileStore, pickQuestion } from './rotation.ts'
 
 const BANK_PATH = fileURLToPath(new URL('../../questions/questions.json', import.meta.url))
+
+/** Delete this file to un-retire everything and start the rotation fresh. */
+const LEDGER_PATH = fileURLToPath(new URL('../../.data/recent-questions.json', import.meta.url))
 
 const bank: Question[] = JSON.parse(readFileSync(BANK_PATH, 'utf8'))
 
@@ -14,16 +18,32 @@ for (const q of bank) {
   }
 }
 
+const seenIds = new Set<string>()
+for (const q of bank) {
+  if (seenIds.has(q.id)) throw new Error(`Duplicate question id: ${q.id}`)
+  seenIds.add(q.id)
+}
+
+const ledger = new QuestionLedger(fileStore(LEDGER_PATH))
+
 export const questionCount = bank.length
 
+/** How many questions are currently resting, for the startup banner. */
+export function retiredCount(): number {
+  return ledger.retired().size
+}
+
 /**
- * Draw a question this room has not used. Falls back to the full bank once a
- * long session exhausts it, mirroring the rulebook's "return used cards to the
- * back of the deck".
+ * Draw the next question for a room and retire it for 24 hours.
+ *
+ * `usedIds` is the room's own history, which the engine carries across
+ * rematches; the ledger covers every other room on this server.
  */
 export function drawQuestion(usedIds: string[]): Question {
-  const used = new Set(usedIds)
-  const pool = bank.filter((q) => !used.has(q.id))
-  const from = pool.length > 0 ? pool : bank
-  return from[Math.floor(Math.random() * from.length)]!
+  const question = pickQuestion(bank, {
+    roomUsedIds: usedIds,
+    retiredIds: ledger.retired(),
+  })
+  ledger.retire(question.id)
+  return question
 }

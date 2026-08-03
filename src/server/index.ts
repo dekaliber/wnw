@@ -11,9 +11,9 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer, type WebSocket } from 'ws'
-import type { ClientMessage, ServerMessage } from '../shared/types.ts'
+import type { ClientMessage, ErrorCode, ServerMessage } from '../shared/types.ts'
 import { RoomManager, type ConnectionId } from './room.ts'
-import { questionCount } from './questions.ts'
+import { questionCount, retiredCount } from './questions.ts'
 import { lanAddresses } from './network.ts'
 
 const PORT = Number(process.env.PORT ?? 8787)
@@ -94,8 +94,8 @@ wss.on('connection', (socket: WebSocket) => {
 
   let joinedRoom: string | null = null
 
-  const fail = (message: string) => {
-    const payload: ServerMessage = { t: 'error', message }
+  const fail = (message: string, code?: ErrorCode) => {
+    const payload: ServerMessage = { t: 'error', message, code }
     socket.send(JSON.stringify(payload))
   }
 
@@ -117,7 +117,9 @@ wss.on('connection', (socket: WebSocket) => {
 
     if (msg.t === 'join' || msg.t === 'watch') {
       const room = rooms.get(msg.roomCode)
-      if (!room) return fail(`No room called ${msg.roomCode.toUpperCase()}.`)
+      if (!room) {
+        return fail(`No room called ${msg.roomCode.toUpperCase()}.`, 'room-not-found')
+      }
       joinedRoom = room.code
       if (msg.t === 'watch') return room.attachBoard(connectionId)
       const error = room.attachPlayer(connectionId, msg.playerId ?? connectionId, msg.name)
@@ -143,7 +145,12 @@ server.listen(PORT, () => {
   const [best, ...alternates] = lanAddresses()
   const where = SERVE_STATIC ? 'Game night' : 'API'
 
-  console.log(`\n  Wits & Wagers — ${questionCount} questions loaded\n`)
+  const resting = retiredCount()
+  console.log(
+    `\n  Wits & Wagers — ${questionCount} questions loaded` +
+      (resting > 0 ? ` (${resting} resting from the last 24h)` : '') +
+      '\n',
+  )
   console.log(`  ${where} server on  http://localhost:${PORT}`)
 
   if (best) {

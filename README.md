@@ -96,6 +96,26 @@ diagrams and every row of its payout table — without a browser.
 detail, so the same class backs the local WebSocket server and can move to
 Cloudflare Durable Objects behind a different adapter.
 
+## Question rotation
+
+Two layers, guarding different things:
+
+- **Per room** — a room never repeats a question. Tracked in game state and
+  carried across restarts and rematches, so restarting mid-game does not hand
+  back the question you just abandoned.
+- **Across rooms** — every question drawn anywhere rests for 24 hours, so
+  starting a fresh room after a game does not serve up what everyone just heard.
+
+The 24-hour ledger is written to `.data/recent-questions.json` (gitignored).
+It has to survive a process restart, since relaunching the server is exactly
+when a new room gets started — the case it exists for. Delete the file to
+un-retire everything.
+
+Room uniqueness outranks the global rest period: hearing a question twice in
+one sitting is far worse than hearing one that came up yesterday, so if the
+only unused questions are resting ones, they get used anyway. Only a room that
+has exhausted all 122 will repeat.
+
 ## Adding questions
 
 Append to `questions/questions.json`. Answers must be numeric; `format` is one of

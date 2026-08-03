@@ -7,9 +7,12 @@ import { rememberedName, rememberedRoom } from '../net.ts'
  * fresh link for tonight's game must not be silently dropped back into last
  * week's room code, so this is read synchronously rather than in an effect.
  */
+function roomFromUrl(): string | null {
+  return new URLSearchParams(location.search).get('room')
+}
+
 function initialRoomCode(): string {
-  const fromUrl = new URLSearchParams(location.search).get('room')
-  return (fromUrl ?? rememberedRoom()).toUpperCase().slice(0, 4)
+  return (roomFromUrl() ?? rememberedRoom()).toUpperCase().slice(0, 4)
 }
 
 export function Join({ game }: { game: Game }) {
@@ -18,6 +21,18 @@ export function Join({ game }: { game: Game }) {
 
   const trimmed = name.trim()
   const code = room.trim().toUpperCase()
+
+  /**
+   * Arriving by QR or shared link means the intent is unambiguous: join *this*
+   * room. Offering "start a new game" there is a trap — a mis-tap creates a
+   * second empty room while everyone else waits in the first one.
+   *
+   * The exception is a link whose room has since gone (an old QR, or a server
+   * restarted since). Then creating one is the only way forward, so the option
+   * comes back rather than leaving them stuck.
+   */
+  const invited = roomFromUrl() !== null
+  const canCreate = !invited || game.roomMissing
 
   return (
     <main className="screen screen--join">
@@ -41,7 +56,8 @@ export function Join({ game }: { game: Game }) {
             maxLength={16}
             autoComplete="nickname"
             placeholder="Witless Wonder"
-            enterKeyHint="next"
+            enterKeyHint={invited ? 'go' : 'next'}
+            autoFocus={invited}
           />
         </label>
 
@@ -64,20 +80,31 @@ export function Join({ game }: { game: Game }) {
         </button>
       </form>
 
-      <div className="divider">or</div>
+      {game.roomMissing && (
+        <p className="hint hint--warn">
+          Room {code} has ended. Start a new one, or ask for the current code.
+        </p>
+      )}
 
-      <button
-        type="button"
-        className="btn btn--ghost"
-        disabled={!trimmed}
-        onClick={() => game.connect({ kind: 'create', name: trimmed })}
-      >
-        Start a new game
-      </button>
+      {canCreate && (
+        <>
+          <div className="divider">or</div>
+          <button
+            type="button"
+            className="btn btn--ghost"
+            disabled={!trimmed}
+            onClick={() => game.connect({ kind: 'create', name: trimmed })}
+          >
+            Start a new game
+          </button>
+        </>
+      )}
 
-      <p className="hint">
-        Putting the board on a TV? Open <code>/board</code> on the laptop.
-      </p>
+      {!invited && (
+        <p className="hint">
+          Putting the board on a TV? Open <code>/board</code> on the laptop.
+        </p>
+      )}
     </main>
   )
 }

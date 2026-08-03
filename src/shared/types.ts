@@ -145,7 +145,10 @@ export type ServerMessage =
   | { t: 'joined'; playerId: string; roomCode: string }
   | { t: 'watching'; roomCode: string }
   | { t: 'state'; state: ClientView }
-  | { t: 'error'; message: string }
+  | { t: 'error'; message: string; code?: ErrorCode }
+
+/** Machine-readable so clients never have to match on user-facing copy. */
+export type ErrorCode = 'room-not-found'
 
 /**
  * What a given client is allowed to see. During the question phase the server

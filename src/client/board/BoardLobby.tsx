@@ -50,6 +50,7 @@ export function BoardLobby({ view }: { view: ClientView }) {
                 {p.name.slice(0, 1).toUpperCase()}
               </span>
               <span>{p.name}</span>
+              {p.id === view.hostId && <span className="board__hosttag">Host</span>}
             </li>
           ))}
         </ul>

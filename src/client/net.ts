@@ -55,12 +55,18 @@ export interface Game {
   clearError: () => void
   /** Best estimate of the server clock right now, for phase countdowns. */
   serverNow: () => number
+  /**
+   * The room in the link does not exist — usually a QR from a previous
+   * session, or a server that has been restarted since.
+   */
+  roomMissing: boolean
 }
 
 export function useGame(): Game {
   const [status, setStatus] = useState<Status>('closed')
   const [view, setView] = useState<ClientView | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [roomMissing, setRoomMissing] = useState(false)
 
   const socket = useRef<WebSocket | null>(null)
   const intent = useRef<Intent>({ kind: 'idle' })
@@ -126,6 +132,14 @@ export function useGame(): Game {
         intent.current = { kind: 'watch', roomCode: msg.roomCode }
       } else if (msg.t === 'error') {
         setError(msg.message)
+        if (msg.code === 'room-not-found') {
+          // Stop retrying into a room that is not there; the join screen
+          // offers to start a new game instead.
+          setRoomMissing(true)
+          closing.current = true
+          intent.current = { kind: 'idle' }
+          socket.current?.close()
+        }
       }
     }
 
@@ -149,6 +163,7 @@ export function useGame(): Game {
       closing.current = false
       intent.current = next
       retries.current = 0
+      setRoomMissing(false)
       if (next.kind === 'join' || next.kind === 'create') rememberName(next.name)
       socket.current?.close()
       open()
@@ -205,5 +220,6 @@ export function useGame(): Game {
     leave,
     clearError: () => setError(null),
     serverNow,
+    roomMissing,
   }
 }

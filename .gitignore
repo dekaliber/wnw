@@ -1,4 +1,6 @@
 node_modules/
 dist/
+# Which questions were drawn in the last 24h. Delete to reset the rotation.
+.data/
 *.log
 .DS_Store

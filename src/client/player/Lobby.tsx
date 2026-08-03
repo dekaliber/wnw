@@ -1,6 +1,7 @@
 import type { ClientView } from '../../shared/types.ts'
 import { MIN_PLAYERS } from '../../shared/engine.ts'
 import type { Game } from '../net.ts'
+import { HostControls } from './HostControls.tsx'
 
 export function Lobby({ game, view }: { game: Game; view: ClientView }) {
   const isHost = view.hostId === view.youId
@@ -8,6 +9,8 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
 
   return (
     <main className="screen">
+      <HostControls view={view} restart={false} />
+
       <header className="room-head">
         <span className="room-head__label">Room</span>
         <span className="room-head__code">{view.roomCode}</span>

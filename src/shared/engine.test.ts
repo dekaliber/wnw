@@ -280,6 +280,30 @@ describe('a full game', () => {
     expect(state.phase).toBe('gameover')
   })
 
+  it('restarts from the middle of a round, back to the settings screen', () => {
+    let state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 50 }),
+      say('ben', { t: 'guess', value: 60 }),
+      say('ana', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
+    ])
+    expect(state.phase).toBe('betting')
+
+    state = run(state, [say('ana', { t: 'rematch' })])
+    expect(state.phase).toBe('lobby')
+    expect(state.round).toBeNull()
+    expect(state.phaseEndsAt).toBeNull()
+    expect(state.players.map((p) => p.score)).toEqual([0, 0])
+    // The abandoned question stays spent so the restarted game will not reuse it.
+    expect(state.usedQuestionIds).toHaveLength(1)
+  })
+
+  it('only lets the host restart', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
+    expect(reduce(state, say('ben', { t: 'rematch' }), deps).error).toMatch(/host/)
+    expect(state.phase).toBe('question')
+  })
+
   it('resets scores but keeps the table for a rematch', () => {
     let state = run(lobbyWith(['ana', 'ben']), [
       say('ana', { t: 'config', config: { totalRounds: 1 } }),

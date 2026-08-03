@@ -1,6 +1,7 @@
 import type { ClientView } from '../../shared/types.ts'
 import { playerById, standings } from '../format.ts'
 import type { Game } from '../net.ts'
+import { HostControls } from './HostControls.tsx'
 
 export function GameOverScreen({ game, view }: { game: Game; view: ClientView }) {
   const isHost = view.hostId === view.youId
@@ -9,6 +10,8 @@ export function GameOverScreen({ game, view }: { game: Game; view: ClientView })
 
   return (
     <main className="screen screen--over">
+      {/* "Play again" below already is the restart. */}
+      <HostControls view={view} restart={false} />
       <p className="over__label">{youWon ? 'You win' : 'Winner'}</p>
       <h1 className="over__name" style={{ color: winner?.color }}>
         {winner?.name ?? '—'}

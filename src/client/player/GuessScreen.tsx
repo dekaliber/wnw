@@ -36,7 +36,7 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
   if (tiebreakBystander) {
     return (
       <main className="screen">
-        <PhaseHeader view={view} seconds={seconds} title="Sudden death" />
+        <PhaseHeader game={game} view={view} seconds={seconds} title="Sudden death" />
         <p className="waiting">
           The leaders are tied. They are settling it — closest without going over.
         </p>
@@ -47,6 +47,7 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
   return (
     <main className="screen screen--guess">
       <PhaseHeader
+        game={game}
         view={view}
         seconds={seconds}
         title={round.isTiebreak ? 'Sudden death' : `Question ${round.number}`}
