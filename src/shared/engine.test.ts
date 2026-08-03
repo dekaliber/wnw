@@ -1,0 +1,342 @@
+import { beforeEach, describe, expect, it } from 'vitest'
+import { createGame, effectiveHostId, reduce, type Action, type EngineDeps } from './engine.ts'
+import { viewFor } from './view.ts'
+import type { ClientMessage, GameState, Question } from './types.ts'
+
+let clock = 1_000_000
+
+const bank: Question[] = Array.from({ length: 30 }, (_, i) => ({
+  id: `q${i}`,
+  text: `Question ${i}?`,
+  answer: 100 + i,
+}))
+
+const deps: EngineDeps = {
+  now: () => clock,
+  drawQuestion: (used) => bank.find((q) => !used.includes(q.id))!,
+}
+
+/** Applies actions in sequence, throwing on the first rejection. */
+function run(state: GameState, actions: Action[]): GameState {
+  let next = state
+  for (const action of actions) {
+    const result = reduce(next, action, deps)
+    if (result.error) throw new Error(`${JSON.stringify(action)} -> ${result.error}`)
+    next = result.state
+  }
+  return next
+}
+
+const say = (playerId: string, message: ClientMessage): Action => ({
+  type: 'message',
+  playerId,
+  message,
+})
+
+function lobbyWith(names: string[]): GameState {
+  return run(
+    createGame('ABCD'),
+    names.map((n) => ({ type: 'addPlayer', playerId: n, name: n }) as Action),
+  )
+}
+
+beforeEach(() => {
+  clock = 1_000_000
+})
+
+describe('lobby', () => {
+  it('makes the first player host and assigns distinct colours', () => {
+    const state = lobbyWith(['ana', 'ben', 'cy'])
+    expect(state.hostId).toBe('ana')
+    expect(new Set(state.players.map((p) => p.color)).size).toBe(3)
+  })
+
+  it('disambiguates duplicate names', () => {
+    const state = run(createGame('ABCD'), [
+      { type: 'addPlayer', playerId: '1', name: 'Sam' },
+      { type: 'addPlayer', playerId: '2', name: 'Sam' },
+    ])
+    expect(state.players.map((p) => p.name)).toEqual(['Sam', 'Sam 2'])
+  })
+
+  it('refuses to start without enough players', () => {
+    const state = lobbyWith(['ana'])
+    expect(reduce(state, say('ana', { t: 'start' }), deps).error).toMatch(/at least/)
+  })
+
+  it('only lets the host start', () => {
+    const state = lobbyWith(['ana', 'ben'])
+    expect(reduce(state, say('ben', { t: 'start' }), deps).error).toMatch(/host/)
+  })
+
+  it('lets someone else drive while the host is away, then hands it back', () => {
+    // A host whose phone sleeps must not lose the role permanently — otherwise
+    // the table is stuck behind whoever happened to inherit it.
+    const away = run(lobbyWith(['ana', 'ben', 'cy']), [{ type: 'disconnect', playerId: 'ana' }])
+    expect(away.hostId).toBe('ana') // ownership never moved
+    expect(effectiveHostId(away)).toBe('ben') // but the game can still advance
+    expect(reduce(away, say('ben', { t: 'start' }), deps).error).toBeUndefined()
+
+    const back = run(away, [{ type: 'reconnect', playerId: 'ana' }])
+    expect(effectiveHostId(back)).toBe('ana')
+    expect(reduce(back, say('ben', { t: 'start' }), deps).error).toMatch(/host/)
+  })
+
+  it('tells clients who can actually drive the game', () => {
+    const away = run(lobbyWith(['ana', 'ben']), [{ type: 'disconnect', playerId: 'ana' }])
+    expect(viewFor(away, 'ben', clock).hostId).toBe('ben')
+  })
+})
+
+describe('the question phase', () => {
+  it('advances as soon as everyone has guessed, without waiting on the clock', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 90 }),
+    ])
+    expect(state.phase).toBe('question')
+
+    const next = run(state, [say('ben', { t: 'guess', value: 110 })])
+    expect(next.phase).toBe('betting')
+    expect(next.round!.slots.filter((s) => s.guess)).toHaveLength(2)
+  })
+
+  it('advances on timeout with whatever came in', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 90 }),
+      { type: 'timeout' },
+    ])
+    expect(state.phase).toBe('betting')
+    expect(state.round!.slots.filter((s) => s.guess)).toHaveLength(1)
+  })
+
+  it('stops waiting on a player who dropped', () => {
+    const state = run(lobbyWith(['ana', 'ben', 'cy']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 90 }),
+      say('ben', { t: 'guess', value: 110 }),
+      { type: 'disconnect', playerId: 'cy' },
+    ])
+    expect(state.phase).toBe('betting')
+  })
+
+  it('sets a deadline only when timers are on', () => {
+    const timed = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
+    expect(timed.phaseEndsAt).toBe(clock + 45_000)
+
+    const untimed = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'config', config: { timersEnabled: false } }),
+      say('ana', { t: 'start' }),
+    ])
+    expect(untimed.phaseEndsAt).toBeNull()
+  })
+})
+
+describe('the betting phase', () => {
+  const betting = () =>
+    run(lobbyWith(['ana', 'ben', 'cy']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 50 }), // slot 3
+      say('ben', { t: 'guess', value: 100 }), // slot 4 -- the answer is 100
+      say('cy', { t: 'guess', value: 150 }), // slot 5
+    ])
+
+  it('refuses bets on empty slots', () => {
+    expect(reduce(betting(), say('ana', { t: 'bet', chip: 0, slotIndex: 1, wager: 0 }), deps).error)
+      .toMatch(/empty/)
+  })
+
+  it('always allows All Answers Too High', () => {
+    const state = run(betting(), [say('ana', { t: 'bet', chip: 0, slotIndex: 0, wager: 0 })])
+    expect(state.round!.bets).toHaveLength(1)
+  })
+
+  it('replaces rather than duplicates a chip', () => {
+    const state = run(betting(), [
+      say('ana', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
+      say('ana', { t: 'bet', chip: 0, slotIndex: 5, wager: 0 }),
+    ])
+    expect(state.round!.bets).toHaveLength(1)
+    expect(state.round!.bets[0]!.slotIndex).toBe(5)
+  })
+
+  it('caps wagers at the points a player actually has', () => {
+    const state = betting()
+    expect(reduce(state, say('ana', { t: 'bet', chip: 0, slotIndex: 3, wager: 1 }), deps).error)
+      .toMatch(/do not have/)
+  })
+
+  it('lets a player move a bet until they lock in', () => {
+    const locked = run(betting(), [
+      say('ana', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
+      say('ana', { t: 'lock' }),
+    ])
+    expect(reduce(locked, say('ana', { t: 'bet', chip: 1, slotIndex: 5, wager: 0 }), deps).error)
+      .toMatch(/locked/)
+
+    const unlocked = run(locked, [say('ana', { t: 'unlock' })])
+    expect(reduce(unlocked, say('ana', { t: 'bet', chip: 1, slotIndex: 5, wager: 0 }), deps).error)
+      .toBeUndefined()
+  })
+
+  it('requires a chip on the mat before locking', () => {
+    expect(reduce(betting(), say('ana', { t: 'lock' }), deps).error).toMatch(/at least one/)
+  })
+
+  it('allows both chips on the same slot', () => {
+    // Explicitly permitted: "Bet both Betting Chips on the same payout slot."
+    const state = run(betting(), [
+      say('ana', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
+      say('ana', { t: 'bet', chip: 1, slotIndex: 4, wager: 0 }),
+    ])
+    expect(state.round!.bets.filter((b) => b.playerId === 'ana')).toHaveLength(2)
+  })
+
+  it('pays both chips when they share the winning slot', () => {
+    const state = run(betting(), [
+      say('ana', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
+      say('ana', { t: 'bet', chip: 1, slotIndex: 4, wager: 0 }),
+      say('ana', { t: 'lock' }),
+      { type: 'timeout' },
+    ])
+    // Two 1-point chips on the 2:1 centre.
+    expect(state.players.find((p) => p.id === 'ana')!.score).toBe(4)
+  })
+
+  it('reveals once everyone has locked in', () => {
+    const state = run(betting(), [
+      say('ana', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
+      say('ana', { t: 'lock' }),
+      say('ben', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
+      say('ben', { t: 'lock' }),
+      say('cy', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
+      say('cy', { t: 'lock' }),
+    ])
+
+    expect(state.phase).toBe('reveal')
+    expect(state.round!.result!.winningSlotIndex).toBe(4) // ben's exact 100
+
+    const score = (id: string) => state.players.find((p) => p.id === id)!.score
+    expect(score('ana')).toBe(2) // one chip at 2:1
+    expect(score('ben')).toBe(5) // one chip at 2:1, plus the 3-point guess bonus
+    expect(score('cy')).toBe(0) // wrong slot, chip returned
+  })
+})
+
+describe('a full game', () => {
+  it('runs seven questions and then ends', () => {
+    let state = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
+
+    for (let round = 1; round <= 7; round++) {
+      expect(state.phase).toBe('question')
+      expect(state.round!.number).toBe(round)
+
+      state = run(state, [
+        say('ana', { t: 'guess', value: 50 }),
+        say('ben', { t: 'guess', value: 5000 }),
+        say('ana', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
+        say('ana', { t: 'lock' }),
+        say('ben', { t: 'bet', chip: 0, slotIndex: 5, wager: 0 }),
+        say('ben', { t: 'lock' }),
+      ])
+      expect(state.phase).toBe('reveal')
+      state = run(state, [say('ana', { t: 'advance' })])
+    }
+
+    expect(state.phase).toBe('gameover')
+    expect(state.winnerIds).toEqual(['ana']) // ben overshot every question
+    expect(new Set(state.usedQuestionIds).size).toBe(7)
+  })
+
+  it('breaks a tie with sudden death instead of declaring a draw', () => {
+    let state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'config', config: { totalRounds: 1 } }),
+      say('ana', { t: 'start' }),
+      // Both guess identically, so they finish level.
+      say('ana', { t: 'guess', value: 50 }),
+      say('ben', { t: 'guess', value: 50 }),
+      say('ana', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
+      say('ana', { t: 'lock' }),
+      say('ben', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
+      say('ben', { t: 'lock' }),
+    ])
+
+    expect(state.players.every((p) => p.score === state.players[0]!.score)).toBe(true)
+
+    state = run(state, [say('ana', { t: 'advance' })])
+    expect(state.phase).toBe('question')
+    expect(state.round!.isTiebreak).toBe(true)
+
+    // The tiebreak answer is 101; ana stays under, ben overshoots.
+    state = run(state, [
+      say('ana', { t: 'guess', value: 100 }),
+      say('ben', { t: 'guess', value: 500 }),
+    ])
+    expect(state.phase).toBe('reveal')
+    expect(state.winnerIds).toEqual(['ana'])
+
+    state = run(state, [say('ana', { t: 'advance' })])
+    expect(state.phase).toBe('gameover')
+  })
+
+  it('resets scores but keeps the table for a rematch', () => {
+    let state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'config', config: { totalRounds: 1 } }),
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 50 }),
+      say('ben', { t: 'guess', value: 60 }),
+      say('ana', { t: 'bet', chip: 0, slotIndex: 5, wager: 0 }),
+      say('ana', { t: 'lock' }),
+      say('ben', { t: 'bet', chip: 0, slotIndex: 5, wager: 0 }),
+      say('ben', { t: 'lock' }),
+      say('ana', { t: 'advance' }),
+    ])
+    expect(state.phase).toBe('gameover')
+
+    state = run(state, [say('ana', { t: 'rematch' })])
+    expect(state.phase).toBe('lobby')
+    expect(state.players.map((p) => p.score)).toEqual([0, 0])
+    expect(state.usedQuestionIds).toHaveLength(1) // no repeats next game
+  })
+})
+
+describe('what clients are allowed to see', () => {
+  it('never ships the answer before the reveal', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
+    // Scoped to the round: the raw timestamps elsewhere in the view would
+    // collide with any short answer and make the substring check meaningless.
+    const serialised = JSON.stringify(viewFor(state, 'ana', clock).round)
+    expect(serialised).not.toContain(String(state.round!.question.answer))
+    expect(viewFor(state, 'ana', clock).round!.question.answer).toBeNull()
+  })
+
+  it('never ships another player’s guess during the question phase', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 4242 }),
+    ])
+    const forBen = viewFor(state, 'ben', clock)
+    expect(JSON.stringify(forBen)).not.toContain('4242')
+    expect(forBen.round!.submitted).toEqual(['ana']) // the "1 / 2 in" counter still works
+    expect(forBen.round!.yourGuess).toBeNull()
+    expect(viewFor(state, 'ana', clock).round!.yourGuess).toBe(4242)
+  })
+
+  it('shows the guesses and the answer once the mat is up', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 4242 }),
+      say('ben', { t: 'guess', value: 11 }),
+    ])
+    const view = viewFor(state, 'ben', clock)
+    expect(view.phase).toBe('betting')
+    expect(JSON.stringify(view)).toContain('4242')
+    expect(view.round!.question.answer).toBeNull() // still not until the reveal
+  })
+
+  it('gives the TV board a view with no player identity', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
+    expect(viewFor(state, null, clock).youId).toBeNull()
+  })
+})
