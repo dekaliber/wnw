@@ -9,8 +9,9 @@ same room. Phones are controllers; a laptop on the TV is the board.
 npm start
 ```
 
-Open `/board` on the TV laptop. It displays the address phones should type,
-in large type, along with the room code.
+Open `/board` on the TV laptop. It shows a QR code that drops phones straight
+into the lobby, with the address and room code alongside for anyone who would
+rather type.
 
 Everyone must be on the same Wi-Fi. No internet needed.
 
@@ -57,6 +58,10 @@ Guesses are centred on the mat, skipping the 2:1 centre when the count is even �
 which reduces to `payout = 2 + distance from centre`. Winning bets are paid
 stake × odds with the stake returned, and everyone whose guess landed in the
 winning slot takes a 3-point bonus.
+
+Both surfaces draw all eight slots, empty ones included. Seeing the full range
+is part of reading the odds — a guess sitting on the 2:1 centre feels different
+when the 5:1 wings beside it are visibly empty.
 
 ## What differs from the cardboard
 

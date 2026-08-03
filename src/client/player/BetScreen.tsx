@@ -70,8 +70,27 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
 
       <ul className="betlist">
         {round.slots.map((slot) => {
-          const bettable = slot.index === ALL_TOO_HIGH || slot.guess
-          if (!bettable) return null
+          const bettable = slot.index === ALL_TOO_HIGH || Boolean(slot.guess)
+
+          // Empty slots are still drawn. On the physical mat you can see the
+          // whole range and every payout at once, and that shapes how the odds
+          // read — a guess on the 2:1 centre looks very different when you can
+          // see the two 5:1 wings sitting empty beside it.
+          if (!bettable) {
+            return (
+              <li key={slot.index}>
+                <div className="betrow betrow--vacant" aria-hidden="true">
+                  <span className="betrow__odds">
+                    {slot.payout}
+                    <small>:1</small>
+                  </span>
+                  <span className="betrow__main">
+                    <span className="betrow__vacant-label">empty</span>
+                  </span>
+                </div>
+              </li>
+            )
+          }
 
           const mine = myChipsOn(slot.index)
           const slotWager = mine.reduce((sum, b) => sum + b.wager, 0)

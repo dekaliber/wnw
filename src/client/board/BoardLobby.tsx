@@ -1,29 +1,40 @@
 import type { ClientView } from '../../shared/types.ts'
 import { useJoinOrigin } from '../useJoinOrigin.ts'
+import { QrJoin } from './QrJoin.tsx'
 
 export function BoardLobby({ view }: { view: ClientView }) {
   const origin = useJoinOrigin()
+  const joinUrl = origin.state === 'ready' ? `http://${origin.host}/?room=${view.roomCode}` : null
 
   return (
     <main className="board board--lobby">
       <div className="board__joinpanel">
-        <p className="board__step">Open this on your phone</p>
-
-        {origin.state === 'ready' ? (
-          <p className="board__url">{origin.host}</p>
-        ) : origin.state === 'loading' ? (
-          <p className="board__url board__url--muted">…</p>
-        ) : (
-          <p className="board__url board__url--warn">No Wi-Fi address</p>
+        {joinUrl && (
+          <div className="board__scan">
+            <QrJoin url={joinUrl} />
+            <p className="board__scan-label">Scan to join</p>
+          </div>
         )}
 
-        <p className="board__step board__step--second">Room code</p>
-        <p className="board__roomcode">{view.roomCode}</p>
+        <div className="board__manual">
+          <p className="board__step">…or type it in</p>
+
+          {origin.state === 'ready' ? (
+            <p className="board__url">{origin.host}</p>
+          ) : origin.state === 'loading' ? (
+            <p className="board__url board__url--muted">…</p>
+          ) : (
+            <p className="board__url board__url--warn">No Wi-Fi address</p>
+          )}
+
+          <p className="board__step board__step--second">Room code</p>
+          <p className="board__roomcode">{view.roomCode}</p>
+        </div>
 
         {origin.state === 'unreachable' && (
           <p className="board__warn">
-            This laptop has no network address, so phones cannot reach it. Connect it to
-            the same Wi-Fi as everyone else.
+            This laptop has no network address, so phones cannot reach it. Connect it to the
+            same Wi-Fi as everyone else.
           </p>
         )}
       </div>
