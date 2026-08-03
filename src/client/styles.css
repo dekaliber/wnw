@@ -1056,6 +1056,25 @@ input {
   font-weight: 800;
   margin: 6px 0 0;
   word-break: break-all;
+  /* Tabular digits keep the IP from shifting as it resolves. */
+  font-variant-numeric: tabular-nums;
+}
+
+.board__url--muted {
+  color: var(--text-dim);
+}
+
+.board__url--warn {
+  color: var(--lose);
+  font-size: clamp(1.2rem, 3vw, 2.2rem);
+}
+
+.board__warn {
+  max-width: 34ch;
+  margin: clamp(12px, 2vh, 22px) auto 0;
+  color: var(--lose);
+  font-size: clamp(0.8rem, 1.3vw, 1.05rem);
+  line-height: 1.5;
 }
 
 .board__roomcode {

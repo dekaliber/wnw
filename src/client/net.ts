@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ClientMessage, ClientView, ServerMessage } from '../shared/types.ts'
+import { newId } from './id.ts'
 
 const ID_KEY = 'wnw.playerId'
 const NAME_KEY = 'wnw.name'
@@ -20,7 +21,7 @@ export type Status = 'connecting' | 'open' | 'reconnecting' | 'closed'
 export function playerId(): string {
   let id = localStorage.getItem(ID_KEY)
   if (!id) {
-    id = crypto.randomUUID()
+    id = newId()
     localStorage.setItem(ID_KEY, id)
   }
   return id
@@ -81,19 +82,30 @@ export function useGame(): Game {
       retries.current = 0
       setStatus('open')
       const current = intent.current
-      if (current.kind === 'create') {
-        ws.send(JSON.stringify({ t: 'create', name: current.name, playerId: playerId() }))
-      } else if (current.kind === 'join') {
-        ws.send(
-          JSON.stringify({
-            t: 'join',
-            roomCode: current.roomCode,
-            name: current.name,
-            playerId: playerId(),
-          }),
-        )
-      } else if (current.kind === 'watch') {
-        ws.send(JSON.stringify({ t: 'watch', roomCode: current.roomCode }))
+
+      // A throw in here is invisible: the socket is open, the handshake never
+      // goes out, and the player stares at an unchanged join screen. Surface it
+      // instead of letting it strand them.
+      try {
+        if (current.kind === 'create') {
+          ws.send(JSON.stringify({ t: 'create', name: current.name, playerId: playerId() }))
+        } else if (current.kind === 'join') {
+          ws.send(
+            JSON.stringify({
+              t: 'join',
+              roomCode: current.roomCode,
+              name: current.name,
+              playerId: playerId(),
+            }),
+          )
+        } else if (current.kind === 'watch') {
+          ws.send(JSON.stringify({ t: 'watch', roomCode: current.roomCode }))
+        }
+      } catch (cause) {
+        console.error('Could not send the join handshake', cause)
+        setError('Could not join — please reload and try again.')
+        closing.current = true
+        ws.close()
       }
     }
 

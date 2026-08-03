@@ -9,11 +9,24 @@ same room. Phones are controllers; a laptop on the TV is the board.
 npm start
 ```
 
-The server prints two URLs. Open the LAN one on the TV laptop at `/board`, and
-read the phone URL out to the room — the board also displays it in large type
-along with the room code.
+Open `/board` on the TV laptop. It displays the address phones should type,
+in large type, along with the room code.
 
 Everyone must be on the same Wi-Fi. No internet needed.
+
+The board is normally opened on the laptop as `localhost`, which no phone can
+reach, so it asks the server via `/api/net` for an address that is actually
+routable. Candidates are ranked in `src/server/network.ts` — VPN tunnels,
+Docker bridges and unleased `169.254.*` interfaces all show up in
+`os.networkInterfaces()` and would each produce a URL that silently fails on
+every phone in the room.
+
+> **Plain HTTP is not a secure context.** Phones connect over
+> `http://<lan-ip>:8787`, where browser APIs gated on secure contexts —
+> `crypto.randomUUID`, `crypto.subtle`, service workers — are undefined.
+> `localhost` *is* a secure context, so this never reproduces in development.
+> `src/client/id.ts` exists for exactly this reason. Anything added to the
+> client must be checked over the LAN IP, not just on localhost.
 
 ## Development
 

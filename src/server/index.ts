@@ -8,13 +8,13 @@
 
 import { createReadStream, existsSync, statSync } from 'node:fs'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { networkInterfaces } from 'node:os'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { WebSocketServer, type WebSocket } from 'ws'
 import type { ClientMessage, ServerMessage } from '../shared/types.ts'
 import { RoomManager, type ConnectionId } from './room.ts'
 import { questionCount } from './questions.ts'
+import { lanAddresses } from './network.ts'
 
 const PORT = Number(process.env.PORT ?? 8787)
 const DIST = fileURLToPath(new URL('../../dist', import.meta.url))
@@ -47,6 +47,14 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json' })
     res.end(JSON.stringify({ ok: true, questions: questionCount }))
+    return
+  }
+
+  // The board is usually opened on localhost, where `location.host` is useless
+  // to a phone. This is how it learns an address the room can actually type.
+  if (req.url === '/api/net') {
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' })
+    res.end(JSON.stringify({ addresses: lanAddresses(), port: PORT }))
     return
   }
 
@@ -131,21 +139,22 @@ wss.on('connection', (socket: WebSocket) => {
 
 // ---------------------------------------------------------------------------
 
-function lanAddress(): string | null {
-  for (const addresses of Object.values(networkInterfaces())) {
-    for (const address of addresses ?? []) {
-      if (address.family === 'IPv4' && !address.internal) return address.address
-    }
-  }
-  return null
-}
-
 server.listen(PORT, () => {
-  const lan = lanAddress()
+  const [best, ...alternates] = lanAddresses()
   const where = SERVE_STATIC ? 'Game night' : 'API'
+
   console.log(`\n  Wits & Wagers — ${questionCount} questions loaded\n`)
   console.log(`  ${where} server on  http://localhost:${PORT}`)
-  if (lan) console.log(`  Phones on Wi-Fi   http://${lan}:${PORT}`)
+
+  if (best) {
+    console.log(`  Phones on Wi-Fi   http://${best}:${PORT}`)
+    for (const alternate of alternates) {
+      console.log(`    or              http://${alternate}:${PORT}`)
+    }
+  } else {
+    console.log('  No network address found — phones will not be able to connect.')
+  }
+
   if (!SERVE_STATIC) console.log(`  Client (dev)      http://localhost:5173`)
   console.log('')
 })
