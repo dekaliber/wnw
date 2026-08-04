@@ -365,7 +365,52 @@ input {
   color: var(--text-dim);
 }
 
-/* ---------- rules ---------- */
+
+/* ---------- settings ---------- */
+
+.setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+
+.setting:first-of-type {
+  border-top: 0;
+}
+
+.setting--toggle input {
+  width: 44px;
+  height: 26px;
+  accent-color: var(--accent);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stepper button {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--bg-sunken);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.stepper__value {
+  min-width: 2.6ch;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- rules link ---------- */
 
 .rules-link {
   width: 100%;
@@ -382,8 +427,114 @@ input {
   color: var(--accent);
 }
 
+/* ---------- host bar ---------- */
+
+.hostbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: -6px;
+}
+
+.hostbar__badge {
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* Small and quiet, and far from the primary action at the bottom of the
+   screen — a mis-tap here would wipe a game in progress. */
+.hostbar__restart {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.hostbar__restart:active {
+  background: var(--bg-sunken);
+}
+
+/* ---------- confirmation ---------- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  /* Explicitly one shrinkable column. Left to size itself, the column takes
+     the card's max-content width — and the rules card contains a horizontal
+     scroller whose pages are each `flex: 0 0 100%`, so that max-content is
+     several screens wide. The column then overflows and `place-items: center`
+     centres the card inside *it* rather than inside the viewport, pushing the
+     card off to the right. `minmax(0, 1fr)` pins the column to the viewport. */
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  padding: 20px;
+  z-index: 100;
+}
+
+.modal__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 0.65);
+  backdrop-filter: blur(2px);
+}
+
+.modal__card {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+  /* Lets the card shrink below its content's intrinsic width. */
+  min-width: 0;
+  padding: 22px;
+  border-radius: 18px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.6);
+  animation: rise 0.16s ease;
+}
+
+.modal__title {
+  margin: 0 0 8px;
+  font-size: 1.25rem;
+}
+
+.modal__body {
+  margin: 0 0 20px;
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.modal__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.btn--danger {
+  background: var(--lose);
+  color: #2a0a0a;
+}
+
+/* ---------- rules cards ---------- */
+
+/* Wider than a confirmation, and the horizontal padding moves onto the pages
+   so each one can span the full width of the swipe track. */
 .rules {
-  width: min(100%, 440px);
+  max-width: 440px;
   padding: 20px 0 18px;
 }
 
@@ -402,6 +553,10 @@ input {
 /* Native scroll-snap paging: the platform handles the swipe physics. */
 .rules__track {
   display: flex;
+  /* Pinned to the card rather than to its own content, which is five screens
+     wide — without this the track drives the whole modal's width. */
+  width: 100%;
+  min-width: 0;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
@@ -415,6 +570,7 @@ input {
 
 .rules__page {
   flex: 0 0 100%;
+  min-width: 0;
   scroll-snap-align: center;
   scroll-snap-stop: always;
   padding: 8px 24px 4px;
@@ -469,142 +625,6 @@ input {
   grid-template-columns: 1fr 1fr;
   gap: 10px;
   padding: 0 20px;
-}
-
-/* ---------- settings ---------- */
-
-.setting {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 0;
-  border-top: 1px solid var(--line);
-  font-size: 0.95rem;
-}
-
-.setting:first-of-type {
-  border-top: 0;
-}
-
-.setting--toggle input {
-  width: 44px;
-  height: 26px;
-  accent-color: var(--accent);
-}
-
-.stepper {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.stepper button {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
-  background: var(--bg-sunken);
-  font-size: 1.2rem;
-  font-weight: 700;
-}
-
-.stepper__value {
-  min-width: 2.6ch;
-  text-align: center;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-/* ---------- host bar ---------- */
-
-.hostbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: -6px;
-}
-
-.hostbar__badge {
-  padding: 3px 12px;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: 0.68rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
-/* Small and quiet, and far from the primary action at the bottom of the
-   screen — a mis-tap here would wipe a game in progress. */
-.hostbar__restart {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: var(--bg-raised);
-  border: 1px solid var(--line);
-  color: var(--text-dim);
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.hostbar__restart:active {
-  background: var(--bg-sunken);
-}
-
-/* ---------- confirmation ---------- */
-
-.modal {
-  position: fixed;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 20px;
-  z-index: 100;
-}
-
-.modal__scrim {
-  position: absolute;
-  inset: 0;
-  background: rgb(0 0 0 / 0.65);
-  backdrop-filter: blur(2px);
-}
-
-.modal__card {
-  position: relative;
-  width: min(100%, 380px);
-  padding: 22px;
-  border-radius: 18px;
-  background: var(--bg-raised);
-  border: 1px solid var(--line);
-  box-shadow: 0 24px 60px rgb(0 0 0 / 0.6);
-  animation: rise 0.16s ease;
-}
-
-.modal__title {
-  margin: 0 0 8px;
-  font-size: 1.25rem;
-}
-
-.modal__body {
-  margin: 0 0 20px;
-  color: var(--text-dim);
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.modal__actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.btn--danger {
-  background: var(--lose);
-  color: #2a0a0a;
 }
 
 /* ---------- phase header ---------- */

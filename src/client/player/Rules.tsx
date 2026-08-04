@@ -23,27 +23,27 @@ const PAGES: Page[] = [
   {
     step: 'The idea',
     title: 'Nobody has to know anything',
-    body: 'Every question has a number for an answer, and nobody expects you to know it. You write a guess, then bet on whichever guess looks best — including someone else’s. Most chips at the end wins.',
+    body: 'Every question has a number for an answer. You write a guess, then bet on whichever guess looks best — including someone else’s. Most chips at the end wins.',
   },
   {
     step: 'Step 1',
     title: 'Write a guess',
-    body: 'A question appears and you tap in a number. All the guesses then line up on the board, smallest to largest. The one that wins is the closest to the real answer without going over — so overshooting is worth nothing.',
+    body: 'A question appears and you tap in a number. All the guesses then line up on the board, smallest to largest. The one that wins is the closest to the real answer without going over — Price is Right rules.',
   },
   {
     step: 'Step 2',
     title: 'Place your chips',
-    body: 'You get two chips. Put both on one guess, or split them across two — and betting on your own guess is entirely allowed. If you reckon everyone overshot, there is a slot for that too.',
+    body: 'You get two chips. Put both on one guess, or split them across two. If you reckon everyone overshot, there is a slot for that too.',
   },
   {
     step: 'Step 3',
     title: 'Raise, if you dare',
-    body: 'Each slot pays different odds: the middle pays 2 to 1, the outer edges up to 6 to 1, because the safe-looking guess is worth less. On top of a chip you can raise, staking chips you have already won. Your two chips always come back — only what you raise can be lost.',
+    body: 'Each slot pays different odds. You can raise on top of your chips with any additional chips you’ve won. Your two chips always come back — only what you raise can be lost.',
   },
   {
     step: 'Step 4',
     title: 'Collect',
-    body: 'Bet on the winning slot and you get your stake back plus the odds, so 4 chips at 3 to 1 pays 12. If your own guess is the one that won, you collect 3 bonus chips on top. Highest pile after the last question takes it.',
+    body: 'Bet on the winning slot and you get your stake back plus the odds. If your own guess is the one that won, you collect 3 bonus chips on top. Highest pile after the last question takes it.',
   },
 ]
 
