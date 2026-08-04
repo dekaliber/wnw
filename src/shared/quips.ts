@@ -37,6 +37,7 @@ export const QUIPS: Quip[] = [
   { id: 'x8', bucket: 'exact', text: 'Spot on. Someone actually did the reading.', category: 'History' },
   { id: 'x9', bucket: 'exact', text: 'Oh look, this human is a smart one!' },
   { id: 'x10', bucket: 'exact', text: 'Genuine biological intelligence. Rare sighting.' },
+  { id: 'x11', bucket: 'exact', text: 'Bet you can’t do it again.' },
 
   // -- Within 5% -----------------------------------------------------------
   { id: 'b1', bucket: 'blazing', text: 'So close it’s almost rude.' },
@@ -49,6 +50,11 @@ export const QUIPS: Quip[] = [
   { id: 'b8', bucket: 'blazing', text: 'Some of you know things. Weird.' },
   { id: 'b9', bucket: 'blazing', text: 'Close enough for NASA.', category: 'Space' },
   { id: 'b10', bucket: 'blazing', text: 'Okay, that one’s going in the training data.' },
+  { id: 'b11', bucket: 'blazing', text: 'Whoa, tryhard alert.' },
+  { id: 'b12', bucket: 'blazing', text: 'Well, isn’t someone an A student.' },
+  { id: 'b13', bucket: 'blazing', text: 'You know, using ChatGPT for this is kinda against the spirit of the game.' },
+  { id: 'b14', bucket: 'blazing', text: 'I bet you’re real proud of yourself.' },
+  { id: 'b15', bucket: 'blazing', text: 'I bet you’re fun at parties.' },
 
   // -- Within 20% ----------------------------------------------------------
   { id: 'd1', bucket: 'decent', text: 'Not bad. Not bad at all.' },
@@ -91,6 +97,15 @@ export const QUIPS: Quip[] = [
   { id: 'w20', bucket: 'wild', text: 'Yeah, okay. Just let the AI take over at this point.' },
   { id: 'w21', bucket: 'wild', text: 'I’m a computer and even I’m embarrassed for you.' },
   { id: 'w22', bucket: 'wild', text: 'Filing this one under cautionary tale.' },
+  { id: 'w23', bucket: 'wild', text: 'We both learned something today.' },
+  { id: 'w24', bucket: 'wild', text: 'Yeah. No.' },
+  { id: 'w25', bucket: 'wild', text: 'Wow, and they pay you how much at work?' },
+  { id: 'w26', bucket: 'wild', text: 'Good thing this isn’t a job application.' },
+  { id: 'w27', bucket: 'wild', text: 'Good thing most of your job is also making shit up.' },
+  { id: 'w28', bucket: 'wild', text: 'Have you heard of this site called Wikipedia?' },
+  { id: 'w29', bucket: 'wild', text: 'Aren’t you glad this wasn’t on the SAT?' },
+  { id: 'w30', bucket: 'wild', text: 'An answer even your mother wouldn’t be proud of.' },
+  { id: 'w31', bucket: 'wild', text: 'Have you seen the movie Idiocracy? Just curious.' },
   { id: 'w11', bucket: 'wild', text: 'Somebody was NOT paying attention in history class.', category: 'History' },
   { id: 'w12', bucket: 'wild', text: 'And this is why you failed science.', category: 'Science' },
   { id: 'w13', bucket: 'wild', text: 'Please never navigate anything, ever.', category: 'Geography' },
