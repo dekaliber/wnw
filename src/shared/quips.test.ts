@@ -65,6 +65,52 @@ describe('how far off was it', () => {
   })
 })
 
+describe('years, which a ratio gets badly wrong', () => {
+  it('treats centuries out as wild, not respectable', () => {
+    // The whole reason years are special-cased. By ratio alone, being three
+    // centuries adrift of 2000 grades as a decent guess.
+    expect(bucketFor(2000, 1700)).toBe('decent')
+    expect(bucketFor(2000, 1700, 'year')).toBe('wild')
+
+    expect(bucketFor(2000, 1500)).toBe('rough') // still far too kind
+    expect(bucketFor(2000, 1500, 'year')).toBe('wild')
+  })
+
+  it('grades a year on the gap alone', () => {
+    expect(bucketFor(1986, 1986, 'year')).toBe('exact')
+    expect(bucketFor(1986, 1984, 'year')).toBe('blazing')
+    expect(bucketFor(1986, 1975, 'year')).toBe('decent')
+    expect(bucketFor(1986, 1950, 'year')).toBe('rough')
+    expect(bucketFor(1986, 1900, 'year')).toBe('wild')
+  })
+
+  it('applies the same gap to ancient dates as to modern ones', () => {
+    // 1066 and 2005 are both "a decade out" at ten years out.
+    expect(bucketFor(1066, 1056, 'year')).toBe('decent')
+    expect(bucketFor(2005, 1995, 'year')).toBe('decent')
+    // And both absurd at four centuries.
+    expect(bucketFor(1066, 700, 'year')).toBe('wild')
+  })
+})
+
+describe('small answers, which a ratio judges too harshly', () => {
+  it('counts one off from a tiny answer as a decent guess', () => {
+    // 2 out of 3 is 33% off, which would otherwise be graded 'rough'.
+    expect(bucketFor(3, 2)).toBe('decent')
+    expect(bucketFor(2, 1)).toBe('decent')
+  })
+
+  it('still lets the ratio win when it is kinder', () => {
+    // 5 away from 100 is a wide gap but a tight ratio.
+    expect(bucketFor(100, 95)).toBe('blazing')
+  })
+
+  it('does not rescue a guess that is genuinely far off', () => {
+    expect(bucketFor(20, 4)).toBe('wild')
+    expect(bucketFor(1000, 100)).toBe('wild')
+  })
+})
+
 describe('picking a line', () => {
   it('always returns something for every bucket', () => {
     for (const bucket of BUCKETS) {

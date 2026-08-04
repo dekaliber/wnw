@@ -447,7 +447,9 @@ function revealAnswer(state: GameState): GameState {
   const winningGuess = winner === ALL_TOO_HIGH ? null : (slots[winner]?.guess?.value ?? null)
   const quipId = anyGuesses
     ? pickQuipId(
-        bucketFor(question.answer, winningGuess),
+        // The format matters: a year 500 out is not a near miss, whatever the
+        // ratio says.
+        bucketFor(question.answer, winningGuess, question.format),
         question.category,
         // Seeded off the round so the same question can still draw a different
         // line next time it comes up, and tests stay deterministic.
