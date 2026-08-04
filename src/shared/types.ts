@@ -66,6 +66,12 @@ export interface RoundResult {
   winningSlotIndex: number
   /** Per-player point delta for this round, broken out so the TV can explain it. */
   deltas: PlayerDelta[]
+  /**
+   * The table's reaction to how close the winning guess was. Resolved server
+   * side so every screen shows the same line; null when there is nothing to
+   * react to (a tiebreak, or a round nobody guessed in).
+   */
+  quipId: string | null
 }
 
 export interface PlayerDelta {

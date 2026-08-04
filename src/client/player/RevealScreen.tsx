@@ -1,3 +1,4 @@
+import { quipText } from '../../shared/quips.ts'
 import type { ClientView } from '../../shared/types.ts'
 import { formatAnswer, playerById, standings } from '../format.ts'
 import type { Game } from '../net.ts'
@@ -41,6 +42,7 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
       <p className="reveal__answer">
         {formatAnswer(round.question.answer ?? 0, round.question.format)}
       </p>
+      {quipText(result.quipId) && <p className="quip">{quipText(result.quipId)}</p>}
       {round.question.note && <p className="reveal__note">{round.question.note}</p>}
 
       <p className="reveal__won">

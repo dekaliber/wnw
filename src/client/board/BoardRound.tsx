@@ -1,3 +1,4 @@
+import { quipText } from '../../shared/quips.ts'
 import type { ClientView } from '../../shared/types.ts'
 import { Mat } from '../Mat.tsx'
 import { formatAnswer, playerById, standings } from '../format.ts'
@@ -69,6 +70,9 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
               <p className="board__answer">
                 {formatAnswer(round.question.answer ?? 0, round.question.format)}
               </p>
+              {quipText(round.result!.quipId) && (
+                <p className="quip quip--board">{quipText(round.result!.quipId)}</p>
+              )}
               {round.question.note && <p className="board__note">{round.question.note}</p>}
               <ul className="board__deltas">
                 {round.result!.deltas

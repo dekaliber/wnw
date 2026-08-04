@@ -7,11 +7,13 @@
  */
 
 import {
+  ALL_TOO_HIGH,
   CHIPS_PER_PLAYER,
   buildMat,
   isBettable,
   winningSlotIndex,
 } from './mat.ts'
+import { bucketFor, pickQuipId, seedFrom } from './quips.ts'
 import { applyDeltas, bankAvailable, leaders, scoreRound } from './scoring.ts'
 import {
   DEFAULT_CONFIG,
@@ -436,15 +438,28 @@ function openBetting(state: GameState, deps: EngineDeps): GameState {
 
 function revealAnswer(state: GameState): GameState {
   if (!state.round) return state
-  const { slots, bets, question } = state.round
+  const { slots, bets, question, number } = state.round
   const winner = winningSlotIndex(slots, question.answer)
   const deltas = scoreRound(state.players, slots, bets, winner)
+
+  // Nobody guessed at all, so there is no near-miss to comment on.
+  const anyGuesses = slots.some((s) => s.guess)
+  const winningGuess = winner === ALL_TOO_HIGH ? null : (slots[winner]?.guess?.value ?? null)
+  const quipId = anyGuesses
+    ? pickQuipId(
+        bucketFor(question.answer, winningGuess),
+        question.category,
+        // Seeded off the round so the same question can still draw a different
+        // line next time it comes up, and tests stay deterministic.
+        seedFrom(`${question.id}:${number}:${winner}`),
+      )
+    : null
 
   return {
     ...state,
     phase: 'reveal',
     players: applyDeltas(state.players, deltas),
-    round: { ...state.round, result: { winningSlotIndex: winner, deltas } },
+    round: { ...state.round, result: { winningSlotIndex: winner, deltas, quipId } },
     phaseEndsAt: null,
   }
 }
@@ -517,7 +532,8 @@ function resolveTiebreak(state: GameState): GameState {
     winnerIds: resolved,
     round: {
       ...state.round,
-      result: { winningSlotIndex: -1, deltas: [] },
+      // A tiebreak has no mat and no betting, so there is nothing to quip at.
+      result: { winningSlotIndex: -1, deltas: [], quipId: null },
     },
     phaseEndsAt: null,
   }

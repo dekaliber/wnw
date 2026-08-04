@@ -8,6 +8,7 @@ import {
   type EngineDeps,
 } from './engine.ts'
 import { viewFor } from './view.ts'
+import { QUIPS, quipText } from './quips.ts'
 import type { ClientMessage, GameState, Question } from './types.ts'
 
 let clock = 1_000_000
@@ -286,6 +287,56 @@ describe('the betting phase', () => {
     expect(score('ana')).toBe(2) // one chip at 2:1
     expect(score('ben')).toBe(5) // one chip at 2:1, plus the 3-point guess bonus
     expect(score('cy')).toBe(0) // wrong slot, chip returned
+  })
+})
+
+describe('the table’s reaction', () => {
+  it('sends every screen the identical line', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 99 }), // the answer is 100
+      say('ben', { t: 'guess', value: 5 }),
+      say('ana', { t: 'bet', chip: 0, slotIndex: 5, wager: 0 }),
+      say('ana', { t: 'lock' }),
+      say('ben', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
+      say('ben', { t: 'lock' }),
+    ])
+
+    const quipId = state.round!.result!.quipId
+    expect(quipId).not.toBeNull()
+    // Same for both players and for the board, which is the entire point.
+    expect(viewFor(state, 'ana', clock).round!.result!.quipId).toBe(quipId)
+    expect(viewFor(state, 'ben', clock).round!.result!.quipId).toBe(quipId)
+    expect(viewFor(state, null, clock).round!.result!.quipId).toBe(quipId)
+    expect(quipText(quipId)).toBeTruthy()
+  })
+
+  it('reacts to a near miss differently from a wild one', () => {
+    const near = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 99 }), // answer 100
+      say('ben', { t: 'guess', value: 1 }),
+      // Both guesses in, so betting opened on its own; one timeout reveals.
+      { type: 'timeout' },
+    ])
+    const wild = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 2 }),
+      say('ben', { t: 'guess', value: 1 }),
+      { type: 'timeout' },
+    ])
+
+    expect(QUIPS.find((q) => q.id === near.round!.result!.quipId)!.bucket).toBe('blazing')
+    expect(QUIPS.find((q) => q.id === wild.round!.result!.quipId)!.bucket).toBe('wild')
+  })
+
+  it('says nothing when nobody guessed at all', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      { type: 'timeout' }, // no guesses in
+      { type: 'timeout' },
+    ])
+    expect(state.round!.result!.quipId).toBeNull()
   })
 })
 
