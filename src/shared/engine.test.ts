@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createGame, effectiveHostId, reduce, type Action, type EngineDeps } from './engine.ts'
+import {
+  createGame,
+  effectiveHostId,
+  everyoneReady,
+  reduce,
+  type Action,
+  type EngineDeps,
+} from './engine.ts'
 import { viewFor } from './view.ts'
 import type { ClientMessage, GameState, Question } from './types.ts'
 
@@ -33,10 +40,22 @@ const say = (playerId: string, message: ClientMessage): Action => ({
   message,
 })
 
-function lobbyWith(names: string[]): GameState {
+/** Players seated, nobody ready. Used by the tests about the ready gate. */
+function rawLobby(names: string[]): GameState {
   return run(
     createGame('ABCD'),
     names.map((n) => ({ type: 'addPlayer', playerId: n, name: n }) as Action),
+  )
+}
+
+/**
+ * The common case: everyone but the host has readied up, so `start` works.
+ * The first name is the host, who never marks themselves ready.
+ */
+function lobbyWith(names: string[]): GameState {
+  return run(
+    rawLobby(names),
+    names.slice(1).map((n) => say(n, { t: 'ready', ready: true })),
   )
 }
 
@@ -62,6 +81,52 @@ describe('lobby', () => {
   it('refuses to start without enough players', () => {
     const state = lobbyWith(['ana'])
     expect(reduce(state, say('ana', { t: 'start' }), deps).error).toMatch(/at least/)
+  })
+
+  it('will not start until every other player is ready', () => {
+    const state = rawLobby(['ana', 'ben', 'cy'])
+    expect(reduce(state, say('ana', { t: 'start' }), deps).error).toMatch(/ready/)
+
+    const partly = run(state, [say('ben', { t: 'ready', ready: true })])
+    expect(reduce(partly, say('ana', { t: 'start' }), deps).error).toMatch(/ready/)
+
+    const all = run(partly, [say('cy', { t: 'ready', ready: true })])
+    expect(everyoneReady(all.players, all.hostId)).toBe(true)
+    expect(reduce(all, say('ana', { t: 'start' }), deps).error).toBeUndefined()
+  })
+
+  it('does not require the host to mark themselves ready', () => {
+    const state = run(rawLobby(['ana', 'ben']), [say('ben', { t: 'ready', ready: true })])
+    expect(state.players.find((p) => p.id === 'ana')!.ready).toBe(false)
+    expect(reduce(state, say('ana', { t: 'start' }), deps).error).toBeUndefined()
+  })
+
+  it('lets a player take their ready back', () => {
+    const state = run(rawLobby(['ana', 'ben']), [
+      say('ben', { t: 'ready', ready: true }),
+      say('ben', { t: 'ready', ready: false }),
+    ])
+    expect(reduce(state, say('ana', { t: 'start' }), deps).error).toMatch(/ready/)
+  })
+
+  it('is not held hostage by a player who has dropped', () => {
+    const state = run(rawLobby(['ana', 'ben', 'cy']), [
+      say('ben', { t: 'ready', ready: true }),
+      { type: 'disconnect', playerId: 'cy' }, // never readied up
+    ])
+    expect(reduce(state, say('ana', { t: 'start' }), deps).error).toBeUndefined()
+  })
+
+  it('clears ready when the game starts and again on a rematch', () => {
+    let state = run(rawLobby(['ana', 'ben']), [
+      say('ben', { t: 'ready', ready: true }),
+      say('ana', { t: 'start' }),
+    ])
+    expect(state.players.every((p) => !p.ready)).toBe(true)
+
+    state = run(state, [say('ana', { t: 'rematch' })])
+    expect(state.players.every((p) => !p.ready)).toBe(true)
+    expect(reduce(state, say('ana', { t: 'start' }), deps).error).toMatch(/ready/)
   })
 
   it('only lets the host start', () => {

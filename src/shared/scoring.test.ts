@@ -9,6 +9,7 @@ const player = (id: string, score = 0): Player => ({
   color: '#fff',
   score,
   connected: true,
+  ready: false,
 })
 
 const bet = (playerId: string, chip: 0 | 1, slotIndex: number, wager = 0): Bet => ({

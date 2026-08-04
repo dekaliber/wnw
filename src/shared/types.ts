@@ -31,6 +31,8 @@ export interface Player {
   color: string
   score: number
   connected: boolean
+  /** Lobby only: the player has said they are ready to start. */
+  ready: boolean
 }
 
 /**
@@ -131,6 +133,7 @@ export type ClientMessage =
   | { t: 'watch'; roomCode: string }
   | { t: 'rename'; name: string }
   | { t: 'config'; config: Partial<GameConfig> }
+  | { t: 'ready'; ready: boolean }
   | { t: 'start' }
   | { t: 'guess'; value: number }
   | { t: 'bet'; chip: 0 | 1; slotIndex: number; wager: number }

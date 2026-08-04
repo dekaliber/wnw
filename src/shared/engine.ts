@@ -117,6 +117,7 @@ function insertPlayer(state: GameState, playerId: string, rawName: string): Game
     color,
     score: 0,
     connected: true,
+    ready: false,
   }
   return {
     ...state,
@@ -163,6 +164,23 @@ export function effectiveHostId(state: GameState): string | null {
   return activePlayers(state)[0]?.id ?? state.hostId
 }
 
+/**
+ * Whether the host may start.
+ *
+ * The host does not mark themselves ready — pressing Start is their signal.
+ * Only connected players count, so someone whose phone has dropped cannot hold
+ * the table hostage; and an empty set is vacuously ready, leaving the minimum
+ * player count to give the more useful message.
+ */
+export function everyoneReady(players: Player[], hostId: string | null): boolean {
+  return players.every((p) => !p.connected || p.id === hostId || p.ready)
+}
+
+/** Ready is a per-game signal, so it clears whenever a new one is set up. */
+function clearReady(players: Player[]): Player[] {
+  return players.map((p) => (p.ready ? { ...p, ready: false } : p))
+}
+
 // ---------------------------------------------------------------------------
 // Messages
 // ---------------------------------------------------------------------------
@@ -196,13 +214,24 @@ function handleMessage(
       return { state: { ...state, players: state.players.filter((p) => p.id !== msg.playerId) } }
     }
 
+    case 'ready': {
+      if (state.phase !== 'lobby') return { state }
+      const players = state.players.map((p) =>
+        p.id === playerId ? { ...p, ready: Boolean(msg.ready) } : p,
+      )
+      return { state: { ...state, players } }
+    }
+
     case 'start': {
       if (!isHost) return { state, error: 'Only the host can start the game.' }
       if (state.phase !== 'lobby') return { state, error: 'The game is already running.' }
       if (activePlayers(state).length < MIN_PLAYERS) {
         return { state, error: `Need at least ${MIN_PLAYERS} players.` }
       }
-      return { state: beginRound(state, 1, false, deps) }
+      if (!everyoneReady(state.players, effectiveHostId(state))) {
+        return { state, error: 'Not everyone is ready yet.' }
+      }
+      return { state: beginRound({ ...state, players: clearReady(state.players) }, 1, false, deps) }
     }
 
     case 'guess': {
@@ -285,7 +314,7 @@ function handleMessage(
           round: null,
           phaseEndsAt: null,
           winnerIds: [],
-          players: state.players.map((p) => ({ ...p, score: 0 })),
+          players: clearReady(state.players).map((p) => ({ ...p, score: 0 })),
         },
       }
     }

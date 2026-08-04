@@ -4,3 +4,6 @@ dist/
 .data/
 *.log
 .DS_Store
+
+# Answer-free review copy, regenerated from questions.json on demand.
+questions/questions-review.json

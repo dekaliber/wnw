@@ -1,11 +1,20 @@
+import { useState } from 'react'
 import type { ClientView } from '../../shared/types.ts'
-import { MIN_PLAYERS } from '../../shared/engine.ts'
+import { MIN_PLAYERS, everyoneReady } from '../../shared/engine.ts'
 import type { Game } from '../net.ts'
 import { HostControls } from './HostControls.tsx'
+import { Rules } from './Rules.tsx'
 
 export function Lobby({ game, view }: { game: Game; view: ClientView }) {
+  const [showRules, setShowRules] = useState(false)
+
   const isHost = view.hostId === view.youId
-  const ready = view.players.filter((p) => p.connected).length >= MIN_PLAYERS
+  const seated = view.players.filter((p) => p.connected)
+  const enoughPlayers = seated.length >= MIN_PLAYERS
+  const allReady = everyoneReady(view.players, view.hostId)
+  const youAreReady = view.players.find((p) => p.id === view.youId)?.ready ?? false
+
+  const waitingOn = seated.filter((p) => p.id !== view.hostId && !p.ready)
 
   return (
     <main className="screen">
@@ -27,26 +36,52 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
               <span className="players__name">{p.name}</span>
               {p.id === view.hostId && <span className="tag">host</span>}
               {p.id === view.youId && <span className="tag tag--you">you</span>}
-              {!p.connected && <span className="tag tag--away">away</span>}
+              {!p.connected ? (
+                <span className="tag tag--away">away</span>
+              ) : p.id === view.hostId ? null : p.ready ? (
+                <span className="tag tag--ready">ready</span>
+              ) : (
+                <span className="tag tag--waiting">not ready</span>
+              )}
             </li>
           ))}
         </ul>
       </section>
+
+      <button type="button" className="rules-link" onClick={() => setShowRules(true)}>
+        While you’re waiting — <strong>how to play</strong>
+      </button>
 
       {isHost ? (
         <>
           <HostSettings game={game} view={view} />
           <button
             className="btn btn--primary btn--fixed"
-            disabled={!ready}
+            disabled={!enoughPlayers || !allReady}
             onClick={() => game.send({ t: 'start' })}
           >
-            {ready ? `Start ${view.config.totalRounds} questions` : `Need ${MIN_PLAYERS} players`}
+            {!enoughPlayers
+              ? `Need ${MIN_PLAYERS} players`
+              : !allReady
+                ? `Waiting on ${waitingOn.map((p) => p.name).join(', ')}`
+                : `Start ${view.config.totalRounds} questions`}
           </button>
         </>
       ) : (
-        <p className="waiting">Waiting for the host to start…</p>
+        <>
+          <p className="waiting">
+            {youAreReady ? 'Waiting for the host to start…' : 'Ready when you are.'}
+          </p>
+          <button
+            className={`btn btn--fixed ${youAreReady ? 'btn--ghost' : 'btn--primary'}`}
+            onClick={() => game.send({ t: 'ready', ready: !youAreReady })}
+          >
+            {youAreReady ? '✓ Ready — tap to undo' : 'I’m ready'}
+          </button>
+        </>
       )}
+
+      {showRules && <Rules onClose={() => setShowRules(false)} />}
     </main>
   )
 }
