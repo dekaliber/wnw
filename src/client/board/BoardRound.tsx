@@ -3,11 +3,14 @@ import { Mat } from '../Mat.tsx'
 import { formatAnswer, playerById, standings } from '../format.ts'
 import type { Game } from '../net.ts'
 import { useCountdown } from '../useCountdown.ts'
+import { useTimerChime } from './useTimerChime.ts'
 
 export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
   const round = view.round!
   const seconds = useCountdown(view, game.serverNow)
   const revealed = view.phase === 'reveal'
+
+  useTimerChime(seconds, `${view.phase}-${round.number}`)
 
   const expected = view.players.filter(
     (p) => p.connected && (!round.isTiebreak || view.winnerIds.includes(p.id)),

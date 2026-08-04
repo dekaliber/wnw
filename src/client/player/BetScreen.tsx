@@ -205,7 +205,7 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
             {CHIPS_PER_PLAYER - myBets.length} chip
             {CHIPS_PER_PLAYER - myBets.length === 1 ? '' : 's'} left
           </span>
-          <span className="betfoot__bank">{bank} pts to raise</span>
+          <span className="betfoot__bank">{bank} chips to raise</span>
         </div>
 
         {locked ? (

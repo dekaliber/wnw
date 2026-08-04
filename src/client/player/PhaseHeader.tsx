@@ -31,7 +31,7 @@ export function PhaseHeader({
         <div className="phase-head__right">
           {you && (
             <span className="score-pill" style={{ borderColor: you.color }}>
-              {you.score} <small>pts</small>
+              {you.score} <small>chips</small>
             </span>
           )}
           {seconds !== null && (

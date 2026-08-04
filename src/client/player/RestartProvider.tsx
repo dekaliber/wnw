@@ -36,8 +36,8 @@ export function RestartProvider({
           title="Restart the game?"
           body={
             midGame
-              ? `This ends question ${view.round?.number ?? 1} and sends everyone back to the settings screen. All scores are cleared.`
-              : 'Everyone goes back to the settings screen and all scores are cleared.'
+              ? `This ends question ${view.round?.number ?? 1} and sends everyone back to the settings screen. Everyone's chips are reset to zero.`
+              : "Everyone goes back to the settings screen and everyone's chips are reset to zero."
           }
           confirmLabel="Restart"
           onConfirm={() => {

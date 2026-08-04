@@ -3,10 +3,12 @@ import type { Game } from '../net.ts'
 import { BoardLobby } from './BoardLobby.tsx'
 import { BoardRound } from './BoardRound.tsx'
 import { BoardOver } from './BoardOver.tsx'
+import { useAudioUnlock } from './chime.ts'
 
 export function BoardApp({ game }: { game: Game }) {
   const { view, connect } = game
   const [code, setCode] = useState('')
+  const soundReady = useAudioUnlock()
 
   // ?room=ABCD on the board URL connects straight away.
   useEffect(() => {
@@ -44,7 +46,24 @@ export function BoardApp({ game }: { game: Game }) {
     )
   }
 
-  if (view.phase === 'lobby') return <BoardLobby view={view} />
-  if (view.phase === 'gameover') return <BoardOver view={view} />
-  return <BoardRound game={game} view={view} />
+  return (
+    <>
+      {view.phase === 'lobby' ? (
+        <BoardLobby view={view} />
+      ) : view.phase === 'gameover' ? (
+        <BoardOver view={view} />
+      ) : (
+        <BoardRound game={game} view={view} />
+      )}
+
+      {/* A board opened straight from a ?room= link has never seen a gesture,
+          so the browser keeps audio suspended. Ask for the one click rather
+          than letting the ten-second warning silently never fire. */}
+      {!soundReady && (
+        <p className="board__soundoff" role="status">
+          Click anywhere to enable the 10-second warning sound
+        </p>
+      )}
+    </>
+  )
 }
