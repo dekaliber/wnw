@@ -18,7 +18,7 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
 
   return (
     <main className="screen">
-      <HostControls game={game} view={view} restart={false} />
+      <HostControls view={view} restart={false} />
 
       <header className="room-head">
         <span className="room-head__label">Room</span>

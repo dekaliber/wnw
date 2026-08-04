@@ -1,16 +1,13 @@
 import type { ClientView } from '../../shared/types.ts'
 import { playerById } from '../format.ts'
-import type { Game } from '../net.ts'
 import { HostControls } from './HostControls.tsx'
 
 export function PhaseHeader({
-  game,
   view,
   seconds,
   title,
   subtitle,
 }: {
-  game: Game
   view: ClientView
   seconds: number | null
   title: string
@@ -20,7 +17,7 @@ export function PhaseHeader({
 
   return (
     <>
-      <HostControls game={game} view={view} />
+      <HostControls view={view} />
 
       <header className="phase-head">
         <div className="phase-head__left">

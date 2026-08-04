@@ -116,6 +116,64 @@ input {
   box-shadow: 0 10px 30px rgb(0 0 0 / 0.55);
 }
 
+/* A sticky footer that can hold more than one button — the host's "move on"
+   action stacked above the player's own primary one, both full width.
+   Two independently-sticky elements would each fight for the same bottom
+   offset, so only the wrapper sticks; the buttons inside are plain flow. */
+.bottom-actions {
+  position: sticky;
+  bottom: calc(12px + var(--safe-b));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+  width: 100%;
+}
+
+.bottom-actions .btn--primary {
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.55);
+}
+
+/* The host's "move things along" action. Full width and hard to miss, but
+   visibly a *second* button next to the player's own — outlined rather than
+   filled, so a rushed tap doesn't reach for this instead of "Lock in". */
+.btn--host-advance {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.btn--host-advance:active {
+  background: rgb(255 201 60 / 0.12);
+}
+
+.btn--host-advance.is-ready {
+  border-color: var(--win);
+  color: var(--win);
+  background: rgb(74 222 128 / 0.1);
+}
+
+.btn__count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  font-size: 0.78rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn--host-advance.is-ready .btn__count {
+  background: rgb(74 222 128 / 0.2);
+}
+
 /* ---------- toasts ---------- */
 
 .toast {
@@ -437,15 +495,7 @@ input {
   margin-bottom: -6px;
 }
 
-.hostbar__left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
 .hostbar__badge {
-  flex: none;
   padding: 3px 12px;
   border-radius: 999px;
   background: var(--accent);
@@ -454,41 +504,6 @@ input {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-}
-
-/* The host's deliberate "move on" call, so a sleeping phone never gets
-   skipped by an automatic quorum check. Shows progress so the host can judge
-   whether it is really time to go. */
-.hostbar__advance {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px 6px 4px 12px;
-  border-radius: 999px;
-  background: var(--bg-raised);
-  border: 1px solid var(--line);
-  color: var(--text-dim);
-  font-size: 0.75rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.hostbar__advance.is-ready {
-  background: rgb(74 222 128 / 0.14);
-  border-color: var(--win);
-  color: var(--win);
-}
-
-.hostbar__advance-count {
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: var(--bg-sunken);
-  font-variant-numeric: tabular-nums;
-  font-weight: 800;
-}
-
-.hostbar__advance.is-ready .hostbar__advance-count {
-  background: rgb(74 222 128 / 0.22);
 }
 
 /* Small and quiet, and far from the primary action at the bottom of the

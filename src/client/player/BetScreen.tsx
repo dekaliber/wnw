@@ -4,6 +4,7 @@ import type { ClientView } from '../../shared/types.ts'
 import { formatAnswer, playerById } from '../format.ts'
 import type { Game } from '../net.ts'
 import { useCountdown } from '../useCountdown.ts'
+import { HostAdvanceButton } from './HostAdvanceButton.tsx'
 import { PhaseHeader } from './PhaseHeader.tsx'
 
 /**
@@ -60,7 +61,6 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
   return (
     <main className="screen screen--bet">
       <PhaseHeader
-        game={game}
         view={view}
         seconds={seconds}
         title={round.isTiebreak ? 'Sudden death' : `Question ${round.number}`}
@@ -222,6 +222,11 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
             Lock in
           </button>
         )}
+
+        {/* Stacked below the player's own bet action, same reasoning as the
+            guess screen: the host is a player too, so their own Lock in stays
+            primary and "move on" sits beside it rather than replacing it. */}
+        {view.hostId === view.youId && <HostAdvanceButton game={game} view={view} />}
       </footer>
     </main>
   )
