@@ -437,7 +437,15 @@ input {
   margin-bottom: -6px;
 }
 
+.hostbar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .hostbar__badge {
+  flex: none;
   padding: 3px 12px;
   border-radius: 999px;
   background: var(--accent);
@@ -446,6 +454,41 @@ input {
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.12em;
+}
+
+/* The host's deliberate "move on" call, so a sleeping phone never gets
+   skipped by an automatic quorum check. Shows progress so the host can judge
+   whether it is really time to go. */
+.hostbar__advance {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px 4px 12px;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.hostbar__advance.is-ready {
+  background: rgb(74 222 128 / 0.14);
+  border-color: var(--win);
+  color: var(--win);
+}
+
+.hostbar__advance-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--bg-sunken);
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.hostbar__advance.is-ready .hostbar__advance-count {
+  background: rgb(74 222 128 / 0.22);
 }
 
 /* Small and quiet, and far from the primary action at the bottom of the

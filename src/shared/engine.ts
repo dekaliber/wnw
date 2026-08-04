@@ -83,7 +83,7 @@ export function reduce(
     case 'reconnect':
       return { state: setConnected(state, action.playerId, true) }
     case 'disconnect':
-      return { state: maybeAdvanceOnQuorum(setConnected(state, action.playerId, false), deps) }
+      return { state: setConnected(state, action.playerId, false) }
     case 'timeout':
       return { state: advancePhase(state, deps) }
     case 'message':
@@ -248,7 +248,11 @@ function handleMessage(
         ...state.round,
         guesses: { ...state.round.guesses, [playerId]: msg.value },
       }
-      return { state: maybeAdvanceOnQuorum({ ...state, round }, deps) }
+      // No auto-advance on quorum: a phone that has gone to sleep can miss its
+      // guess entirely if the phase moves on the instant everyone else is in.
+      // The phase now only ends when the timer runs out or the host advances
+      // it manually — see `case 'advance'`.
+      return { state: { ...state, round } }
     }
 
     case 'bet': {
@@ -293,7 +297,8 @@ function handleMessage(
       if (placed === 0) return { state, error: 'Place at least one chip first.' }
       if (state.round.locked.includes(playerId)) return { state }
       const locked = [...state.round.locked, playerId]
-      return { state: maybeAdvanceOnQuorum({ ...state, round: { ...state.round, locked } }, deps) }
+      // Same reasoning as `guess`: no early advance on quorum.
+      return { state: { ...state, round: { ...state.round, locked } } }
     }
 
     case 'unlock': {
@@ -377,33 +382,6 @@ function deadline(
   if (!config.timersEnabled) return null
   const seconds = phase === 'question' ? config.guessSeconds : config.betSeconds
   return deps.now() + seconds * 1000
-}
-
-/**
- * Advance early when everyone who could act already has — most rounds never
- * reach the clock, which keeps the pace up.
- */
-function maybeAdvanceOnQuorum(state: GameState, deps: EngineDeps): GameState {
-  if (!state.round) return state
-  const expected = expectedActors(state)
-  if (expected.length === 0) return state
-
-  if (state.phase === 'question') {
-    const allIn = expected.every((p) => p.id in state.round!.guesses)
-    return allIn ? advancePhase(state, deps) : state
-  }
-  if (state.phase === 'betting') {
-    const allIn = expected.every((p) => state.round!.locked.includes(p.id))
-    return allIn ? advancePhase(state, deps) : state
-  }
-  return state
-}
-
-/** Who the current phase is waiting on. */
-function expectedActors(state: GameState): Player[] {
-  const active = activePlayers(state)
-  if (state.round?.isTiebreak) return active.filter((p) => state.winnerIds.includes(p.id))
-  return active
 }
 
 export function advancePhase(state: GameState, deps: EngineDeps): GameState {

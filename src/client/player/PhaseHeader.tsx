@@ -20,7 +20,7 @@ export function PhaseHeader({
 
   return (
     <>
-      <HostControls view={view} />
+      <HostControls game={game} view={view} />
 
       <header className="phase-head">
         <div className="phase-head__left">

@@ -18,7 +18,7 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
 
   return (
     <main className="screen">
-      <HostControls view={view} restart={false} />
+      <HostControls game={game} view={view} restart={false} />
 
       <header className="room-head">
         <span className="room-head__label">Room</span>
@@ -137,7 +137,8 @@ function HostSettings({ game, view }: { game: Game; view: ClientView }) {
         </>
       )}
       <p className="hint hint--tight">
-        Rounds end early once everyone is in, so the clock is just a backstop.
+        Guessing and betting only end when the clock runs out or you move things
+        along yourself — so nobody's phone waking up late gets skipped.
       </p>
     </section>
   )

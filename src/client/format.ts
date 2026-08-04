@@ -33,3 +33,21 @@ export function secondsLeft(view: ClientView, serverNow: number): number | null 
 
 export const slotLabel = (index: number): string =>
   index === 0 ? 'All Answers Too High' : `Pays ${2 + Math.abs(index - 4)} to 1`
+
+/**
+ * Who the current round is waiting on: everyone connected, or — during sudden
+ * death — only the tied leaders, since bystanders never guess in a tiebreak.
+ */
+export function expectedActors(view: ClientView): Player[] {
+  const active = view.players.filter((p) => p.connected)
+  if (view.round?.isTiebreak) return active.filter((p) => view.winnerIds.includes(p.id))
+  return active
+}
+
+/** How many of them have acted in the current phase — guessed, or locked their bets. */
+export function actedCount(view: ClientView): number {
+  if (!view.round) return 0
+  if (view.phase === 'question') return view.round.submitted.length
+  if (view.phase === 'betting') return view.round.locked.length
+  return 0
+}

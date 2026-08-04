@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ClientView } from '../../shared/types.ts'
+import { expectedActors } from '../format.ts'
 import type { Game } from '../net.ts'
 import { useCountdown } from '../useCountdown.ts'
 import { PhaseHeader } from './PhaseHeader.tsx'
@@ -61,7 +62,8 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
           <p className="locked-in__label">Your guess</p>
           <p className="locked-in__value">{round.yourGuess?.toLocaleString()}</p>
           <p className="waiting">
-            {round.submitted.length} of {expected(view)} in — waiting for the rest…
+            {round.submitted.length} of {expectedActors(view).length} in — waiting for the
+            rest…
           </p>
         </section>
       ) : (
@@ -96,10 +98,4 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
       )}
     </main>
   )
-}
-
-function expected(view: ClientView): number {
-  const active = view.players.filter((p) => p.connected)
-  if (view.round?.isTiebreak) return active.filter((p) => view.winnerIds.includes(p.id)).length
-  return active.length
 }

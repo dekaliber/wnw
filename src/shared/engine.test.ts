@@ -155,16 +155,28 @@ describe('lobby', () => {
 })
 
 describe('the question phase', () => {
-  it('advances as soon as everyone has guessed, without waiting on the clock', () => {
+  it('does not advance on its own just because everyone has guessed', () => {
+    // The fix for the sleeping-phone edge case: quorum alone must never end
+    // the phase, or a phone that reconnects a beat too late gets skipped the
+    // instant everyone else who is currently connected has gone.
     const state = run(lobbyWith(['ana', 'ben']), [
       say('ana', { t: 'start' }),
       say('ana', { t: 'guess', value: 90 }),
+      say('ben', { t: 'guess', value: 110 }),
     ])
     expect(state.phase).toBe('question')
+    expect(Object.keys(state.round!.guesses)).toEqual(['ana', 'ben'])
+  })
 
-    const next = run(state, [say('ben', { t: 'guess', value: 110 })])
-    expect(next.phase).toBe('betting')
-    expect(next.round!.slots.filter((s) => s.guess)).toHaveLength(2)
+  it('lets the host move things along once they are satisfied', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 90 }),
+      say('ben', { t: 'guess', value: 110 }),
+      say('ana', { t: 'advance' }),
+    ])
+    expect(state.phase).toBe('betting')
+    expect(state.round!.slots.filter((s) => s.guess)).toHaveLength(2)
   })
 
   it('advances on timeout with whatever came in', () => {
@@ -177,14 +189,17 @@ describe('the question phase', () => {
     expect(state.round!.slots.filter((s) => s.guess)).toHaveLength(1)
   })
 
-  it('stops waiting on a player who dropped', () => {
+  it('does not skip ahead just because a non-responder disconnected', () => {
+    // This is the exact scenario the fix targets: a player who dropped (or
+    // whose phone is merely asleep) must not make the phase end early for
+    // everyone still connected and waiting.
     const state = run(lobbyWith(['ana', 'ben', 'cy']), [
       say('ana', { t: 'start' }),
       say('ana', { t: 'guess', value: 90 }),
       say('ben', { t: 'guess', value: 110 }),
       { type: 'disconnect', playerId: 'cy' },
     ])
-    expect(state.phase).toBe('betting')
+    expect(state.phase).toBe('question')
   })
 
   it('sets a deadline only when timers are on', () => {
@@ -206,6 +221,8 @@ describe('the betting phase', () => {
       say('ana', { t: 'guess', value: 50 }), // slot 3
       say('ben', { t: 'guess', value: 100 }), // slot 4 -- the answer is 100
       say('cy', { t: 'guess', value: 150 }), // slot 5
+      // Guessing never advances on its own now, so the host moves it along.
+      say('ana', { t: 'advance' }),
     ])
 
   it('refuses bets on empty slots', () => {
@@ -270,7 +287,7 @@ describe('the betting phase', () => {
     expect(state.players.find((p) => p.id === 'ana')!.score).toBe(4)
   })
 
-  it('reveals once everyone has locked in', () => {
+  it('does not reveal on its own just because everyone locked in', () => {
     const state = run(betting(), [
       say('ana', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
       say('ana', { t: 'lock' }),
@@ -278,6 +295,20 @@ describe('the betting phase', () => {
       say('ben', { t: 'lock' }),
       say('cy', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
       say('cy', { t: 'lock' }),
+    ])
+    expect(state.phase).toBe('betting')
+  })
+
+  it('reveals once the host moves on after everyone has locked in', () => {
+    const state = run(betting(), [
+      say('ana', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
+      say('ana', { t: 'lock' }),
+      say('ben', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
+      say('ben', { t: 'lock' }),
+      say('cy', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
+      say('cy', { t: 'lock' }),
+      // Locking in never advances on its own either — same fix, same reason.
+      say('ana', { t: 'advance' }),
     ])
 
     expect(state.phase).toBe('reveal')
@@ -296,10 +327,12 @@ describe('the table’s reaction', () => {
       say('ana', { t: 'start' }),
       say('ana', { t: 'guess', value: 99 }), // the answer is 100
       say('ben', { t: 'guess', value: 5 }),
+      say('ana', { t: 'advance' }),
       say('ana', { t: 'bet', chip: 0, slotIndex: 5, wager: 0 }),
       say('ana', { t: 'lock' }),
       say('ben', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
       say('ben', { t: 'lock' }),
+      say('ana', { t: 'advance' }),
     ])
 
     const quipId = state.round!.result!.quipId
@@ -316,13 +349,14 @@ describe('the table’s reaction', () => {
       say('ana', { t: 'start' }),
       say('ana', { t: 'guess', value: 99 }), // answer 100
       say('ben', { t: 'guess', value: 1 }),
-      // Both guesses in, so betting opened on its own; one timeout reveals.
-      { type: 'timeout' },
+      { type: 'timeout' }, // question -> betting
+      { type: 'timeout' }, // betting -> reveal, nobody needed to lock in
     ])
     const wild = run(lobbyWith(['ana', 'ben']), [
       say('ana', { t: 'start' }),
       say('ana', { t: 'guess', value: 2 }),
       say('ben', { t: 'guess', value: 1 }),
+      { type: 'timeout' },
       { type: 'timeout' },
     ])
 
@@ -351,10 +385,12 @@ describe('a full game', () => {
       state = run(state, [
         say('ana', { t: 'guess', value: 50 }),
         say('ben', { t: 'guess', value: 5000 }),
+        say('ana', { t: 'advance' }),
         say('ana', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
         say('ana', { t: 'lock' }),
         say('ben', { t: 'bet', chip: 0, slotIndex: 5, wager: 0 }),
         say('ben', { t: 'lock' }),
+        say('ana', { t: 'advance' }),
       ])
       expect(state.phase).toBe('reveal')
       state = run(state, [say('ana', { t: 'advance' })])
@@ -372,10 +408,12 @@ describe('a full game', () => {
       // Both guess identically, so they finish level.
       say('ana', { t: 'guess', value: 50 }),
       say('ben', { t: 'guess', value: 50 }),
+      say('ana', { t: 'advance' }),
       say('ana', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
       say('ana', { t: 'lock' }),
       say('ben', { t: 'bet', chip: 0, slotIndex: 4, wager: 0 }),
       say('ben', { t: 'lock' }),
+      say('ana', { t: 'advance' }),
     ])
 
     expect(state.players.every((p) => p.score === state.players[0]!.score)).toBe(true)
@@ -388,6 +426,7 @@ describe('a full game', () => {
     state = run(state, [
       say('ana', { t: 'guess', value: 100 }),
       say('ben', { t: 'guess', value: 500 }),
+      say('ana', { t: 'advance' }),
     ])
     expect(state.phase).toBe('reveal')
     expect(state.winnerIds).toEqual(['ana'])
@@ -401,6 +440,7 @@ describe('a full game', () => {
       say('ana', { t: 'start' }),
       say('ana', { t: 'guess', value: 50 }),
       say('ben', { t: 'guess', value: 60 }),
+      say('ana', { t: 'advance' }),
       say('ana', { t: 'bet', chip: 0, slotIndex: 3, wager: 0 }),
     ])
     expect(state.phase).toBe('betting')
@@ -426,10 +466,12 @@ describe('a full game', () => {
       say('ana', { t: 'start' }),
       say('ana', { t: 'guess', value: 50 }),
       say('ben', { t: 'guess', value: 60 }),
+      say('ana', { t: 'advance' }),
       say('ana', { t: 'bet', chip: 0, slotIndex: 5, wager: 0 }),
       say('ana', { t: 'lock' }),
       say('ben', { t: 'bet', chip: 0, slotIndex: 5, wager: 0 }),
       say('ben', { t: 'lock' }),
+      say('ana', { t: 'advance' }),
       say('ana', { t: 'advance' }),
     ])
     expect(state.phase).toBe('gameover')
@@ -468,6 +510,7 @@ describe('what clients are allowed to see', () => {
       say('ana', { t: 'start' }),
       say('ana', { t: 'guess', value: 4242 }),
       say('ben', { t: 'guess', value: 11 }),
+      say('ana', { t: 'advance' }),
     ])
     const view = viewFor(state, 'ben', clock)
     expect(view.phase).toBe('betting')

@@ -16,7 +16,7 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
     const winner = view.winnerIds[0]
     return (
       <main className="screen screen--reveal">
-        <HostControls view={view} />
+        <HostControls game={game} view={view} />
         <p className="reveal__label">Sudden death</p>
         <p className="reveal__answer">
           {formatAnswer(round.question.answer ?? 0, round.question.format)}
@@ -37,7 +37,7 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
 
   return (
     <main className="screen screen--reveal">
-      <HostControls view={view} />
+      <HostControls game={game} view={view} />
       <p className="reveal__label">The answer is</p>
       <p className="reveal__answer">
         {formatAnswer(round.question.answer ?? 0, round.question.format)}
