@@ -1,5 +1,6 @@
 import type { ClientView } from '../../shared/types.ts'
 import { actedCount, expectedActors } from '../format.ts'
+import { useT } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 
 /**
@@ -13,6 +14,7 @@ import type { Game } from '../net.ts'
  * before the tap rather than after.
  */
 export function HostAdvanceButton({ game, view }: { game: Game; view: ClientView }) {
+  const t = useT()
   if (view.hostId !== view.youId) return null
   if (view.phase !== 'question' && view.phase !== 'betting') return null
 
@@ -26,7 +28,7 @@ export function HostAdvanceButton({ game, view }: { game: Game; view: ClientView
       className={`btn btn--host-advance ${everyoneIn ? 'is-ready' : ''}`}
       onClick={() => game.send({ t: 'advance' })}
     >
-      {view.phase === 'question' ? 'Move to betting' : 'Reveal answer'}
+      {view.phase === 'question' ? t.moveToBetting : t.revealAnswer}
       <span className="btn__count">
         {acted}/{total}
       </span>

@@ -2,6 +2,8 @@ import { ALL_TOO_HIGH, CHIPS_PER_PLAYER } from '../../shared/mat.ts'
 import { bankAvailable } from '../../shared/scoring.ts'
 import type { ClientView } from '../../shared/types.ts'
 import { formatAnswer, playerById } from '../format.ts'
+import { questionText } from '../i18n/content.ts'
+import { useLocale } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 import { useCountdown } from '../useCountdown.ts'
 import { HostAdvanceButton } from './HostAdvanceButton.tsx'
@@ -18,6 +20,7 @@ import { PhaseHeader } from './PhaseHeader.tsx'
  * them, so a single control per slot is equivalent and far easier to use.
  */
 export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
+  const { locale, t } = useLocale()
   const round = view.round!
   const seconds = useCountdown(view, game.serverNow)
   const you = view.youId ? playerById(view, view.youId) : undefined
@@ -63,11 +66,11 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
       <PhaseHeader
         view={view}
         seconds={seconds}
-        title={round.isTiebreak ? 'Sudden death' : `Question ${round.number}`}
-        subtitle="place your chips"
+        title={round.isTiebreak ? t.suddenDeath : t.questionN(round.number)}
+        subtitle={t.placeYourChips}
       />
 
-      <p className="question question--recap">{round.question.text}</p>
+      <p className="question question--recap">{questionText(round.question, locale)}</p>
 
       <ul className="betlist">
         {round.slots.map((slot) => {
@@ -86,7 +89,7 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
                     <small>:1</small>
                   </span>
                   <span className="betrow__main">
-                    <span className="betrow__vacant-label">empty</span>
+                    <span className="betrow__vacant-label">{t.empty}</span>
                   </span>
                 </div>
               </li>
@@ -125,7 +128,7 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
                 <span className="betrow__main">
                   {slot.index === ALL_TOO_HIGH ? (
                     <span className="betrow__value betrow__value--special">
-                      All Answers Too High
+                      {t.allAnswersTooHigh}
                     </span>
                   ) : (
                     <>
@@ -166,9 +169,9 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
                     className="wager__remove"
                     onClick={() => removeOne(slot.index)}
                   >
-                    Take back
+                    {t.takeBack}
                   </button>
-                  <span className="wager__label">Raise</span>
+                  <span className="wager__label">{t.raise}</span>
                   <button
                     type="button"
                     disabled={slotWager === 0}
@@ -190,7 +193,7 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
                     disabled={bank === 0}
                     onClick={() => setSlotWager(slot.index, slotWager + bank)}
                   >
-                    All in
+                    {t.allIn}
                   </button>
                 </div>
               )}
@@ -201,17 +204,16 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
 
       <footer className="betfoot">
         <div className="betfoot__status">
-          <span>
-            {CHIPS_PER_PLAYER - myBets.length} chip
-            {CHIPS_PER_PLAYER - myBets.length === 1 ? '' : 's'} left
-          </span>
-          <span className="betfoot__bank">{bank} chips to raise</span>
+          <span>{t.chipsLeft(CHIPS_PER_PLAYER - myBets.length)}</span>
+          <span className="betfoot__bank">{t.chipsToRaise(bank)}</span>
         </div>
 
         {locked ? (
           <button className="btn btn--ghost" onClick={() => game.send({ t: 'unlock' })}>
-            Locked in — tap to change ({round.locked.length}/
-            {view.players.filter((p) => p.connected).length})
+            {t.lockedTapToChange(
+              round.locked.length,
+              view.players.filter((p) => p.connected).length,
+            )}
           </button>
         ) : (
           <button
@@ -219,7 +221,7 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
             disabled={myBets.length === 0}
             onClick={() => game.send({ t: 'lock' })}
           >
-            Lock in
+            {t.lockIn}
           </button>
         )}
 

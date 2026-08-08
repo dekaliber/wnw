@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useT } from './i18n/LocaleProvider.tsx'
 
 /**
  * A deliberate speed bump for actions that would wreck a game in progress.
@@ -23,6 +24,7 @@ export function Confirm({
   onConfirm: () => void
   onCancel: () => void
 }) {
+  const t = useT()
   const cancelRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -43,7 +45,7 @@ export function Confirm({
         <p className="modal__body">{body}</p>
         <div className="modal__actions">
           <button ref={cancelRef} type="button" className="btn btn--ghost" onClick={onCancel}>
-            Cancel
+            {t.cancel}
           </button>
           <button type="button" className="btn btn--danger" onClick={onConfirm}>
             {confirmLabel}

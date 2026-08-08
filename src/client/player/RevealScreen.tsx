@@ -1,10 +1,12 @@
-import { quipText } from '../../shared/quips.ts'
 import type { ClientView } from '../../shared/types.ts'
 import { formatAnswer, playerById, standings } from '../format.ts'
+import { localisedQuip, questionNote } from '../i18n/content.ts'
+import { useLocale } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 import { HostControls } from './HostControls.tsx'
 
 export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
+  const { locale, t } = useLocale()
   const round = view.round!
   const result = round.result!
   const isHost = view.hostId === view.youId
@@ -12,23 +14,26 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
   const winningSlot = round.slots[result.winningSlotIndex]
   const last = round.number >= view.config.totalRounds
 
+  const quip = localisedQuip(result.quipId, locale)
+  const note = questionNote(round.question, locale)
+
   if (round.isTiebreak) {
     const winner = view.winnerIds[0]
     return (
       <main className="screen screen--reveal">
         <HostControls view={view} />
-        <p className="reveal__label">Sudden death</p>
+        <p className="reveal__label">{t.suddenDeath}</p>
         <p className="reveal__answer">
           {formatAnswer(round.question.answer ?? 0, round.question.format)}
         </p>
         <p className="reveal__won">
           {view.winnerIds.length === 1
-            ? `${playerById(view, winner!)?.name} takes it.`
-            : 'Still tied — going again.'}
+            ? t.takesIt(playerById(view, winner!)?.name ?? '')
+            : t.stillTied}
         </p>
         {isHost && (
           <button className="btn btn--primary btn--fixed" onClick={() => game.send({ t: 'advance' })}>
-            Continue
+            {t.continueLabel}
           </button>
         )}
       </main>
@@ -38,17 +43,20 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
   return (
     <main className="screen screen--reveal">
       <HostControls view={view} />
-      <p className="reveal__label">The answer is</p>
+      <p className="reveal__label">{t.theAnswerIs}</p>
       <p className="reveal__answer">
         {formatAnswer(round.question.answer ?? 0, round.question.format)}
       </p>
-      {quipText(result.quipId) && <p className="quip">{quipText(result.quipId)}</p>}
-      {round.question.note && <p className="reveal__note">{round.question.note}</p>}
+      {quip && <p className="quip">{quip}</p>}
+      {note && <p className="reveal__note">{note}</p>}
 
       <p className="reveal__won">
         {result.winningSlotIndex === 0
-          ? 'Everyone went over — All Answers Too High pays 6 to 1.'
-          : `${formatAnswer(winningSlot?.guess?.value ?? 0, round.question.format)} wins at ${winningSlot?.payout} to 1.`}
+          ? t.everyoneWentOver
+          : t.winsAt(
+              formatAnswer(winningSlot?.guess?.value ?? 0, round.question.format),
+              winningSlot?.payout ?? 0,
+            )}
       </p>
 
       {mine && (
@@ -58,10 +66,10 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
             {mine.total}
           </span>
           <span className="yours__breakdown">
-            {mine.winnings > 0 && <em>+{mine.winnings} from your chips</em>}
-            {mine.bonus > 0 && <em>+{mine.bonus} your guess won the slot</em>}
-            {mine.lost < 0 && <em>{mine.lost} on the raise</em>}
-            {mine.total === 0 && <em>Chips returned. No damage.</em>}
+            {mine.winnings > 0 && <em>{t.fromYourChips(mine.winnings)}</em>}
+            {mine.bonus > 0 && <em>{t.guessWonSlot(mine.bonus)}</em>}
+            {mine.lost < 0 && <em>{t.lostOnRaise(mine.lost)}</em>}
+            {mine.total === 0 && <em>{t.chipsReturned}</em>}
           </span>
         </section>
       )}
@@ -79,10 +87,10 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
 
       {isHost ? (
         <button className="btn btn--primary btn--fixed" onClick={() => game.send({ t: 'advance' })}>
-          {last ? 'Final scores' : `Question ${round.number + 1}`}
+          {last ? t.finalScores : t.nextQuestion(round.number + 1)}
         </button>
       ) : (
-        <p className="waiting">Waiting for the host…</p>
+        <p className="waiting">{t.waitingForHostShort}</p>
       )}
     </main>
   )

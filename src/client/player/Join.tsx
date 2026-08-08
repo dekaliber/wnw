@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 import { rememberedName, rememberedRoom } from '../net.ts'
 
@@ -16,6 +17,7 @@ function initialRoomCode(): string {
 }
 
 export function Join({ game }: { game: Game }) {
+  const t = useT()
   const [name, setName] = useState(rememberedName())
   const [room, setRoom] = useState(initialRoomCode)
 
@@ -38,7 +40,7 @@ export function Join({ game }: { game: Game }) {
     <main className="screen screen--join">
       <header className="brand">
         <h1>Wits &amp; Wagers</h1>
-        <p className="brand__sub">Everyone guesses. Everyone bets. Nobody has to know anything.</p>
+        <p className="brand__sub">{t.tagline}</p>
       </header>
 
       <form
@@ -49,20 +51,20 @@ export function Join({ game }: { game: Game }) {
         }}
       >
         <label className="field">
-          <span>Your name</span>
+          <span>{t.yourName}</span>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             maxLength={16}
             autoComplete="nickname"
-            placeholder="Witless Wonder"
+            placeholder={t.namePlaceholder}
             enterKeyHint={invited ? 'go' : 'next'}
             autoFocus={invited}
           />
         </label>
 
         <label className="field">
-          <span>Room code</span>
+          <span>{t.roomCode}</span>
           <input
             value={room}
             onChange={(e) => setRoom(e.target.value.toUpperCase().slice(0, 4))}
@@ -76,35 +78,27 @@ export function Join({ game }: { game: Game }) {
         </label>
 
         <button type="submit" className="btn btn--primary" disabled={!trimmed || code.length < 4}>
-          Join game
+          {t.joinGame}
         </button>
       </form>
 
-      {game.roomMissing && (
-        <p className="hint hint--warn">
-          Room {code} has ended. Start a new one, or ask for the current code.
-        </p>
-      )}
+      {game.roomMissing && <p className="hint hint--warn">{t.roomEnded(code)}</p>}
 
       {canCreate && (
         <>
-          <div className="divider">or</div>
+          <div className="divider">{t.or}</div>
           <button
             type="button"
             className="btn btn--ghost"
             disabled={!trimmed}
             onClick={() => game.connect({ kind: 'create', name: trimmed })}
           >
-            Start a new game
+            {t.startNewGame}
           </button>
         </>
       )}
 
-      {!invited && (
-        <p className="hint">
-          Putting the board on a TV? Open <code>/board</code> on the laptop.
-        </p>
-      )}
+      {!invited && <p className="hint">{t.boardHint}</p>}
     </main>
   )
 }

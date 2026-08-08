@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import type { ClientView } from '../../shared/types.ts'
 import { MIN_PLAYERS, everyoneReady } from '../../shared/engine.ts'
+import { useT } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 import { HostControls } from './HostControls.tsx'
 import { Rules } from './Rules.tsx'
 
 export function Lobby({ game, view }: { game: Game; view: ClientView }) {
+  const t = useT()
   const [showRules, setShowRules] = useState(false)
 
   const isHost = view.hostId === view.youId
@@ -21,27 +23,27 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
       <HostControls view={view} restart={false} />
 
       <header className="room-head">
-        <span className="room-head__label">Room</span>
+        <span className="room-head__label">{t.room}</span>
         <span className="room-head__code">{view.roomCode}</span>
       </header>
 
       <section className="panel">
         <h2 className="panel__title">
-          At the table <span className="count">{view.players.length}</span>
+          {t.atTheTable} <span className="count">{view.players.length}</span>
         </h2>
         <ul className="players">
           {view.players.map((p) => (
             <li key={p.id} className={p.connected ? '' : 'players__away'}>
               <span className="dot" style={{ background: p.color }} />
               <span className="players__name">{p.name}</span>
-              {p.id === view.hostId && <span className="tag">host</span>}
-              {p.id === view.youId && <span className="tag tag--you">you</span>}
+              {p.id === view.hostId && <span className="tag">{t.host}</span>}
+              {p.id === view.youId && <span className="tag tag--you">{t.you}</span>}
               {!p.connected ? (
-                <span className="tag tag--away">away</span>
+                <span className="tag tag--away">{t.away}</span>
               ) : p.id === view.hostId ? null : p.ready ? (
-                <span className="tag tag--ready">ready</span>
+                <span className="tag tag--ready">{t.ready}</span>
               ) : (
-                <span className="tag tag--waiting">not ready</span>
+                <span className="tag tag--waiting">{t.notReady}</span>
               )}
             </li>
           ))}
@@ -49,7 +51,8 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
       </section>
 
       <button type="button" className="rules-link" onClick={() => setShowRules(true)}>
-        While you’re waiting — <strong>how to play</strong>
+        {t.rulesLinkLead}
+        <strong>{t.rulesLinkStrong}</strong>
       </button>
 
       {isHost ? (
@@ -61,22 +64,20 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
             onClick={() => game.send({ t: 'start' })}
           >
             {!enoughPlayers
-              ? `Need ${MIN_PLAYERS} players`
+              ? t.needPlayers(MIN_PLAYERS)
               : !allReady
-                ? `Waiting on ${waitingOn.map((p) => p.name).join(', ')}`
-                : `Start ${view.config.totalRounds} questions`}
+                ? t.waitingOnNames(waitingOn.map((p) => p.name).join(', '))
+                : t.startQuestions(view.config.totalRounds)}
           </button>
         </>
       ) : (
         <>
-          <p className="waiting">
-            {youAreReady ? 'Waiting for the host to start…' : 'Ready when you are.'}
-          </p>
+          <p className="waiting">{youAreReady ? t.waitingForHost : t.readyWhenYouAre}</p>
           <button
             className={`btn btn--fixed ${youAreReady ? 'btn--ghost' : 'btn--primary'}`}
             onClick={() => game.send({ t: 'ready', ready: !youAreReady })}
           >
-            {youAreReady ? '✓ Ready — tap to undo' : 'I’m ready'}
+            {youAreReady ? t.readyTapUndo : t.imReady}
           </button>
         </>
       )}
@@ -87,14 +88,15 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
 }
 
 function HostSettings({ game, view }: { game: Game; view: ClientView }) {
+  const t = useT()
   const { config } = view
 
   return (
     <section className="panel">
-      <h2 className="panel__title">Settings</h2>
+      <h2 className="panel__title">{t.settings}</h2>
 
       <div className="setting">
-        <span>Questions</span>
+        <span>{t.questionsSetting}</span>
         <Stepper
           value={config.totalRounds}
           min={1}
@@ -104,7 +106,7 @@ function HostSettings({ game, view }: { game: Game; view: ClientView }) {
       </div>
 
       <label className="setting setting--toggle">
-        <span>Timers</span>
+        <span>{t.timers}</span>
         <input
           type="checkbox"
           checked={config.timersEnabled}
@@ -115,7 +117,7 @@ function HostSettings({ game, view }: { game: Game; view: ClientView }) {
       {config.timersEnabled && (
         <>
           <div className="setting">
-            <span>Seconds to guess</span>
+            <span>{t.secondsToGuess}</span>
             <Stepper
               value={config.guessSeconds}
               min={10}
@@ -125,7 +127,7 @@ function HostSettings({ game, view }: { game: Game; view: ClientView }) {
             />
           </div>
           <div className="setting">
-            <span>Seconds to bet</span>
+            <span>{t.secondsToBet}</span>
             <Stepper
               value={config.betSeconds}
               min={10}
@@ -136,10 +138,7 @@ function HostSettings({ game, view }: { game: Game; view: ClientView }) {
           </div>
         </>
       )}
-      <p className="hint hint--tight">
-        Guessing and betting only end when the clock runs out or you move things
-        along yourself — so nobody's phone waking up late gets skipped.
-      </p>
+      <p className="hint hint--tight">{t.timerHint}</p>
     </section>
   )
 }
@@ -159,11 +158,11 @@ function Stepper({
 }) {
   return (
     <span className="stepper">
-      <button type="button" onClick={() => onChange(Math.max(min, value - step))} aria-label="less">
+      <button type="button" onClick={() => onChange(Math.max(min, value - step))} aria-label="-">
         –
       </button>
       <span className="stepper__value">{value}</span>
-      <button type="button" onClick={() => onChange(Math.min(max, value + step))} aria-label="more">
+      <button type="button" onClick={() => onChange(Math.min(max, value + step))} aria-label="+">
         +
       </button>
     </span>

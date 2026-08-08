@@ -518,6 +518,36 @@ describe('what clients are allowed to see', () => {
     expect(view.round!.question.answer).toBeNull() // still not until the reveal
   })
 
+  it('strips the French note as well as the English one', () => {
+    // Several notes state the answer outright, so shipping `noteFr` early
+    // would leak it to any French player before the reveal.
+    const bankWithNote: Question[] = [
+      {
+        id: 'qn',
+        text: 'Question?',
+        answer: 42,
+        note: 'It is forty-two.',
+        noteFr: 'C’est quarante-deux.',
+      },
+    ]
+    const noteDeps: EngineDeps = { now: () => clock, drawQuestion: () => bankWithNote[0]! }
+    // The question must be *drawn* from this bank, or the assertion is vacuous.
+    let state = reduce(lobbyWith(['ana', 'ben']), say('ana', { t: 'start' }), noteDeps).state
+    expect(state.round!.question.noteFr).toBe('C’est quarante-deux.')
+
+    const beforeReveal = viewFor(state, 'ana', clock).round!.question
+    expect(beforeReveal.note).toBeUndefined()
+    expect(beforeReveal.noteFr).toBeUndefined()
+
+    // …and both come back once the answer is out.
+    state = reduce(state, say('ana', { t: 'guess', value: 40 }), noteDeps).state
+    state = reduce(state, { type: 'timeout' }, noteDeps).state // -> betting
+    state = reduce(state, { type: 'timeout' }, noteDeps).state // -> reveal
+    const afterReveal = viewFor(state, 'ana', clock).round!.question
+    expect(afterReveal.note).toBe('It is forty-two.')
+    expect(afterReveal.noteFr).toBe('C’est quarante-deux.')
+  })
+
   it('gives the TV board a view with no player identity', () => {
     const state = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
     expect(viewFor(state, null, clock).youId).toBeNull()

@@ -1,4 +1,5 @@
 import type { ClientView } from '../../shared/types.ts'
+import { useT } from '../i18n/LocaleProvider.tsx'
 import { useRequestRestart } from './RestartProvider.tsx'
 
 /**
@@ -11,9 +12,7 @@ import { useRequestRestart } from './RestartProvider.tsx'
  *
  * Restart opens a confirmation instead of acting — hitting it by accident
  * would wipe a game everyone is midway through — but the dialog itself lives
- * in `RestartProvider`, above the phase screens. It cannot live here: each
- * phase renders a different screen, so this component unmounts every time the
- * round advances, which would silently drop an open dialog mid-decision.
+ * in `RestartProvider`, above the phase screens.
  */
 export function HostControls({
   view,
@@ -23,20 +22,21 @@ export function HostControls({
   /** Off where a restart would be redundant — the lobby *is* the settings screen. */
   restart?: boolean
 }) {
+  const t = useT()
   const requestRestart = useRequestRestart()
   if (view.hostId !== view.youId) return null
 
   return (
     <div className="hostbar">
-      <span className="hostbar__badge">Host</span>
+      <span className="hostbar__badge">{t.host}</span>
 
       {restart && requestRestart && (
         <button
           type="button"
           className="hostbar__restart"
           onClick={requestRestart}
-          aria-label="Restart the game"
-          title="Restart the game"
+          aria-label={t.restartAria}
+          title={t.restartAria}
         >
           ⟲
         </button>

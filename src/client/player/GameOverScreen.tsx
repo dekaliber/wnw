@@ -1,9 +1,11 @@
 import type { ClientView } from '../../shared/types.ts'
 import { playerById, standings } from '../format.ts'
+import { useT } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 import { HostControls } from './HostControls.tsx'
 
 export function GameOverScreen({ game, view }: { game: Game; view: ClientView }) {
+  const t = useT()
   const isHost = view.hostId === view.youId
   const winner = view.winnerIds[0] ? playerById(view, view.winnerIds[0]) : undefined
   const youWon = view.winnerIds.includes(view.youId ?? '')
@@ -12,7 +14,7 @@ export function GameOverScreen({ game, view }: { game: Game; view: ClientView })
     <main className="screen screen--over">
       {/* "Play again" below already is the restart. */}
       <HostControls view={view} restart={false} />
-      <p className="over__label">{youWon ? 'You win' : 'Winner'}</p>
+      <p className="over__label">{youWon ? t.youWin : t.winner}</p>
       <h1 className="over__name" style={{ color: winner?.color }}>
         {winner?.name ?? '—'}
       </h1>
@@ -30,14 +32,14 @@ export function GameOverScreen({ game, view }: { game: Game; view: ClientView })
 
       {isHost ? (
         <button className="btn btn--primary btn--fixed" onClick={() => game.send({ t: 'rematch' })}>
-          Play again
+          {t.playAgain}
         </button>
       ) : (
-        <p className="waiting">Waiting for the host to start a rematch…</p>
+        <p className="waiting">{t.waitingForRematch}</p>
       )}
 
       <button className="btn btn--quiet" onClick={game.leave}>
-        Leave room
+        {t.leaveRoom}
       </button>
     </main>
   )

@@ -19,8 +19,11 @@ import type {
 } from './types.ts'
 
 function redactQuestion(question: Question, revealed: boolean): ClientQuestion {
-  const { answer, note, ...rest } = question
-  return revealed ? { ...rest, answer, note } : { ...rest, answer: null }
+  // `noteFr` has to be stripped alongside `note` — several notes state the
+  // answer outright, so leaving the translation behind would leak it to any
+  // French player before the reveal.
+  const { answer, note, noteFr, ...rest } = question
+  return revealed ? { ...rest, answer, note, noteFr } : { ...rest, answer: null }
 }
 
 export function viewFor(state: GameState, youId: string | null, now: number): ClientView {

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ClientView } from '../../shared/types.ts'
 import { expectedActors } from '../format.ts'
+import { questionText } from '../i18n/content.ts'
+import { useLocale } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 import { useCountdown } from '../useCountdown.ts'
 import { HostAdvanceButton } from './HostAdvanceButton.tsx'
@@ -12,6 +14,7 @@ import { PhaseHeader } from './PhaseHeader.tsx'
  * enough to hit while laughing at someone.
  */
 export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
+  const { locale, t } = useLocale()
   const round = view.round!
   const seconds = useCountdown(view, game.serverNow)
   const [draft, setDraft] = useState('')
@@ -39,9 +42,9 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
   if (tiebreakBystander) {
     return (
       <main className="screen">
-        <PhaseHeader view={view} seconds={seconds} title="Sudden death" />
+        <PhaseHeader view={view} seconds={seconds} title={t.suddenDeath} />
         <p className="waiting">
-          The leaders are tied. They are settling it — closest without going over.
+          {t.tiebreakBystander}
         </p>
         {/* The host might not be one of the tied leaders and so never guesses
             here themselves — this is their only way to move things along. */}
@@ -59,20 +62,19 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
       <PhaseHeader
         view={view}
         seconds={seconds}
-        title={round.isTiebreak ? 'Sudden death' : `Question ${round.number}`}
-        subtitle={round.isTiebreak ? undefined : `of ${view.config.totalRounds}`}
+        title={round.isTiebreak ? t.suddenDeath : t.questionN(round.number)}
+        subtitle={round.isTiebreak ? undefined : t.ofN(view.config.totalRounds)}
       />
 
-      <p className="question">{round.question.text}</p>
+      <p className="question">{questionText(round.question, locale)}</p>
 
       {submitted ? (
         <>
           <section className="locked-in">
-            <p className="locked-in__label">Your guess</p>
+            <p className="locked-in__label">{t.yourGuess}</p>
             <p className="locked-in__value">{round.yourGuess?.toLocaleString()}</p>
             <p className="waiting">
-              {round.submitted.length} of {expectedActors(view).length} in — waiting for the
-              rest…
+              {t.inWaitingForRest(round.submitted.length, expectedActors(view).length)}
             </p>
           </section>
           {/* Nothing left for this player to do, so — for the host — this is
@@ -87,10 +89,10 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
       ) : (
         <>
           <div className="readout" aria-live="polite">
-            {draft || <span className="readout__placeholder">Your guess</span>}
+            {draft || <span className="readout__placeholder">{t.guessPlaceholder}</span>}
           </div>
 
-          <p className="hint hint--tight">Closest without going over wins the slot.</p>
+          <p className="hint hint--tight">{t.closestWithoutGoingOver}</p>
 
           <div className="keypad">
             {['1', '2', '3', '4', '5', '6', '7', '8', '9', '.', '0', 'del'].map((key) => (
@@ -115,7 +117,7 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
               disabled={!valid}
               onClick={() => game.send({ t: 'guess', value })}
             >
-              Lock in {valid ? value.toLocaleString() : ''}
+              {valid ? t.lockInValue(value.toLocaleString()) : t.lockIn}
             </button>
           </div>
         </>

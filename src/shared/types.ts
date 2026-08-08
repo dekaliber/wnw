@@ -20,6 +20,14 @@ export interface Question {
   category?: string
   /** Rendering hint: 'plain' | 'money' | 'year' | 'percent'. */
   format?: AnswerFormat
+  /**
+   * French text. Sent alongside the English rather than resolved server-side,
+   * because language is per-player: two people at one table can be reading the
+   * same question in different languages, so the server cannot pick one.
+   * Falls back to English when a question has not been translated yet.
+   */
+  textFr?: string
+  noteFr?: string
 }
 
 export type AnswerFormat = 'plain' | 'money' | 'year' | 'percent'
@@ -173,9 +181,10 @@ export interface ClientView extends Omit<GameState, 'round'> {
 }
 
 /** The question as clients may see it: the answer is withheld until the reveal. */
-export type ClientQuestion = Omit<Question, 'answer' | 'note'> & {
+export type ClientQuestion = Omit<Question, 'answer' | 'note' | 'noteFr'> & {
   answer: number | null
   note?: string
+  noteFr?: string
 }
 
 export interface ClientRound extends Omit<Round, 'guesses' | 'question'> {

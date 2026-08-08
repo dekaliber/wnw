@@ -1,3 +1,4 @@
+import { LocaleToggle } from '../i18n/LocaleToggle.tsx'
 import type { Game } from '../net.ts'
 import { Join } from './Join.tsx'
 import { Lobby } from './Lobby.tsx'
@@ -10,12 +11,19 @@ import { RestartProvider } from './RestartProvider.tsx'
 export function PlayerApp({ game }: { game: Game }) {
   const { view } = game
 
-  if (!view) return <Join game={game} />
-
+  // Rendered once here rather than inside each screen: that is what makes the
+  // toggle genuinely available on every page, including the join form.
   return (
-    <RestartProvider game={game} view={view}>
-      <Screen game={game} view={view} />
-    </RestartProvider>
+    <>
+      <LocaleToggle />
+      {view ? (
+        <RestartProvider game={game} view={view}>
+          <Screen game={game} view={view} />
+        </RestartProvider>
+      ) : (
+        <Join game={game} />
+      )}
+    </>
   )
 }
 

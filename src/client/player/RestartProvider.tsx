@@ -1,13 +1,14 @@
 import { createContext, useContext, useState, type ReactNode } from 'react'
 import { Confirm } from '../Confirm.tsx'
 import type { ClientView } from '../../shared/types.ts'
+import { useT } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 
 /**
  * Owns the restart confirmation above the phase screens.
  *
  * The dialog cannot live inside `HostControls`: each phase renders a different
- * screen, so when a round advances — a timer expiring, everyone locking in —
+ * screen, so when a round advances — a timer expiring, the host moving on —
  * that subtree unmounts and the open dialog disappears mid-decision. Holding
  * the state here keeps it up until the host actually answers it.
  */
@@ -25,6 +26,7 @@ export function RestartProvider({
   view: ClientView
   children: ReactNode
 }) {
+  const t = useT()
   const [confirming, setConfirming] = useState(false)
   const midGame = view.phase !== 'lobby' && view.phase !== 'gameover'
 
@@ -33,13 +35,9 @@ export function RestartProvider({
       {children}
       {confirming && (
         <Confirm
-          title="Restart the game?"
-          body={
-            midGame
-              ? `This ends question ${view.round?.number ?? 1} and sends everyone back to the settings screen. Everyone's chips are reset to zero.`
-              : "Everyone goes back to the settings screen and everyone's chips are reset to zero."
-          }
-          confirmLabel="Restart"
+          title={t.restartTitle}
+          body={midGame ? t.restartBodyMid(view.round?.number ?? 1) : t.restartBodyIdle}
+          confirmLabel={t.restart}
           onConfirm={() => {
             game.send({ t: 'rematch' })
             setConfirming(false)
