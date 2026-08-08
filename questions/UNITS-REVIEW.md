@@ -27,7 +27,7 @@ imperial number — so e.g. Everest is 8,849 m, the surveyed metric height, not
 |---|---|---|
 | `n078` | How many bones are in one human **foot**? | False positive — "foot" is the body part, not the unit. |
 | `s17` | How many degrees below zero do Celsius and Fahrenheit finally agree? | The answer (40) is the crossing point. Identical in both systems — the question is *about* the units. |
-| `n223` | How many **gallons** of sap make one **gallon** of maple syrup? | A ratio. 40:1 holds in any unit; just reword to "litres … litre" and the answer is unchanged. |
+| `n223` | How many **gallons** of sap make one **gallon** of maple syrup? | A ratio. 40:1 holds in any unit — **done**: the French now reads "litres … litre" with the same answer. |
 
 ## B. I'd keep imperial (6)
 
