@@ -1,8 +1,10 @@
 import type { ClientView } from '../../shared/types.ts'
 import { useJoinOrigin } from '../useJoinOrigin.ts'
+import { boardStrings } from './useBoardLocales.ts'
 import { QrJoin } from './QrJoin.tsx'
 
 export function BoardLobby({ view }: { view: ClientView }) {
+  const t = boardStrings(view)
   const origin = useJoinOrigin()
   const joinUrl = origin.state === 'ready' ? `http://${origin.host}/?room=${view.roomCode}` : null
 
@@ -12,22 +14,22 @@ export function BoardLobby({ view }: { view: ClientView }) {
         {joinUrl && (
           <div className="board__scan">
             <QrJoin url={joinUrl} />
-            <p className="board__scan-label">Scan to join</p>
+            <p className="board__scan-label">{t.boardScanToJoin}</p>
           </div>
         )}
 
         <div className="board__manual">
-          <p className="board__step">…or type it in</p>
+          <p className="board__step">{t.boardOrTypeItIn}</p>
 
           {origin.state === 'ready' ? (
             <p className="board__url">{origin.host}</p>
           ) : origin.state === 'loading' ? (
             <p className="board__url board__url--muted">…</p>
           ) : (
-            <p className="board__url board__url--warn">No Wi-Fi address</p>
+            <p className="board__url board__url--warn">{t.boardNoWifi}</p>
           )}
 
-          <p className="board__step board__step--second">Room code</p>
+          <p className="board__step board__step--second">{t.roomCode}</p>
           <p className="board__roomcode">{view.roomCode}</p>
         </div>
 
@@ -41,7 +43,7 @@ export function BoardLobby({ view }: { view: ClientView }) {
 
       <div className="board__roster">
         <h2>
-          At the table <span className="count">{view.players.length}</span>
+          {t.atTheTable} <span className="count">{view.players.length}</span>
         </h2>
         <ul className="board__players">
           {view.players.map((p) => (
@@ -51,9 +53,9 @@ export function BoardLobby({ view }: { view: ClientView }) {
               </span>
               <span>{p.name}</span>
               {p.id === view.hostId ? (
-                <span className="board__hosttag">Host</span>
+                <span className="board__hosttag">{t.host}</span>
               ) : p.ready ? (
-                <span className="board__hosttag board__hosttag--ready">Ready</span>
+                <span className="board__hosttag board__hosttag--ready">{t.ready}</span>
               ) : null}
             </li>
           ))}

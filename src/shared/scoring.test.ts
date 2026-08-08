@@ -10,6 +10,7 @@ const player = (id: string, score = 0): Player => ({
   score,
   connected: true,
   ready: false,
+  locale: 'en',
 })
 
 const bet = (playerId: string, chip: 0 | 1, slotIndex: number, wager = 0): Bet => ({

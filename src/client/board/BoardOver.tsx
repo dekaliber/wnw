@@ -1,14 +1,16 @@
 import type { ClientView } from '../../shared/types.ts'
 import { playerById, standings } from '../format.ts'
+import { boardStrings } from './useBoardLocales.ts'
 
 export function BoardOver({ view }: { view: ClientView }) {
+  const t = boardStrings(view)
   const ranked = standings(view)
   const winner = view.winnerIds[0] ? playerById(view, view.winnerIds[0]) : undefined
   const podium = [ranked[1], ranked[0], ranked[2]] // silver, gold, bronze
 
   return (
     <main className="board board--over">
-      <p className="board__over-label">Winner</p>
+      <p className="board__over-label">{t.winner}</p>
       <h1 className="board__over-name" style={{ color: winner?.color }}>
         {winner?.name ?? '—'}
       </h1>

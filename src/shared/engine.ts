@@ -21,6 +21,7 @@ import {
   type ClientMessage,
   type GameConfig,
   type GameState,
+  type Locale,
   type Player,
   type Question,
   type Round,
@@ -43,7 +44,12 @@ export const MAX_PLAYERS = 20
 export interface EngineDeps {
   now: () => number
   /** Draws an unused question; the server owns the bank. */
-  drawQuestion: (usedIds: string[]) => Question
+  drawQuestion: (usedIds: string[], options: DrawOptions) => Question
+}
+
+export interface DrawOptions {
+  /** Skip questions whose answer is stated in imperial units. */
+  excludeImperial: boolean
 }
 
 export type Action =
@@ -120,6 +126,7 @@ function insertPlayer(state: GameState, playerId: string, rawName: string): Game
     score: 0,
     connected: true,
     ready: false,
+    locale: 'en',
   }
   return {
     ...state,
@@ -214,6 +221,15 @@ function handleMessage(
     case 'kick': {
       if (!isHost) return { state, error: 'Only the host can remove players.' }
       return { state: { ...state, players: state.players.filter((p) => p.id !== msg.playerId) } }
+    }
+
+    case 'locale': {
+      // Purely presentational, and allowed in any phase: someone switching
+      // language mid-round must not be blocked, and the board watches this to
+      // decide whether the table is mixed.
+      const next: Locale = msg.locale === 'fr' ? 'fr' : 'en'
+      const players = state.players.map((p) => (p.id === playerId ? { ...p, locale: next } : p))
+      return { state: { ...state, players } }
     }
 
     case 'ready': {
@@ -337,6 +353,7 @@ function sanitizeConfig(config: GameConfig): GameConfig {
     guessSeconds: clamp(Math.floor(config.guessSeconds), 10, 300),
     betSeconds: clamp(Math.floor(config.betSeconds), 10, 300),
     timersEnabled: Boolean(config.timersEnabled),
+    excludeImperial: Boolean(config.excludeImperial),
   }
 }
 
@@ -354,7 +371,9 @@ function beginRound(
   isTiebreak: boolean,
   deps: EngineDeps,
 ): GameState {
-  const question = deps.drawQuestion(state.usedQuestionIds)
+  const question = deps.drawQuestion(state.usedQuestionIds, {
+    excludeImperial: state.config.excludeImperial,
+  })
   const round: Round = {
     number,
     question,

@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { LocaleToggle } from '../i18n/LocaleToggle.tsx'
+import { useLocale } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 import { Join } from './Join.tsx'
 import { Lobby } from './Lobby.tsx'
@@ -10,6 +12,15 @@ import { RestartProvider } from './RestartProvider.tsx'
 
 export function PlayerApp({ game }: { game: Game }) {
   const { view } = game
+  const { locale } = useLocale()
+
+  // Tell the server what this player is reading, so the board can notice a
+  // mixed-language table on its own. Re-sent whenever the language changes or
+  // the connection comes back, since a reconnect gets a fresh player record.
+  const joined = Boolean(view)
+  useEffect(() => {
+    if (joined) game.send({ t: 'locale', locale })
+  }, [game, joined, locale])
 
   // Rendered once here rather than inside each screen: that is what makes the
   // toggle genuinely available on every page, including the join form.

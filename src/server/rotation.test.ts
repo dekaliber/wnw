@@ -14,6 +14,14 @@ const bank: Question[] = Array.from({ length: 10 }, (_, i) => ({
   answer: i,
 }))
 
+/** Half the bank states its answer in imperial units. */
+const mixedBank: Question[] = [
+  { id: 'm1', text: 'How many feet?', answer: 1, units: 'imperial' },
+  { id: 'm2', text: 'How many miles?', answer: 2, units: 'imperial' },
+  { id: 'm3', text: 'How many countries?', answer: 3 },
+  { id: 'm4', text: 'What year?', answer: 4 },
+]
+
 /** Deterministic "random": always takes the first of the pool. */
 const first = () => 0
 
@@ -62,6 +70,56 @@ describe('picking a question', () => {
 
   it('refuses an empty bank rather than returning nothing', () => {
     expect(() => pickQuestion([], { roomUsedIds: [], retiredIds: new Set() })).toThrow(/empty/)
+  })
+})
+
+describe('skipping imperial-unit questions', () => {
+  it('never serves one when the host has turned them off', () => {
+    for (let seed = 0; seed < 60; seed++) {
+      const picked = pickQuestion(mixedBank, {
+        roomUsedIds: [],
+        retiredIds: new Set(),
+        excludeImperial: true,
+        random: () => seed / 60,
+      })
+      expect(picked.units).toBeUndefined()
+    }
+  })
+
+  it('serves them normally when the host has not', () => {
+    const seen = new Set(
+      Array.from({ length: 60 }, (_, i) =>
+        pickQuestion(mixedBank, {
+          roomUsedIds: [],
+          retiredIds: new Set(),
+          random: () => i / 60,
+        }).id,
+      ),
+    )
+    expect(seen.size).toBe(mixedBank.length)
+  })
+
+  it('holds the exclusion even when that forces a repeat', () => {
+    // The other constraints relax under pressure; this one must not. The host
+    // switched it on because somebody at the table cannot answer them.
+    const picked = pickQuestion(mixedBank, {
+      roomUsedIds: ['m3', 'm4'], // every metric question already used
+      retiredIds: new Set(),
+      excludeImperial: true,
+      random: () => 0,
+    })
+    expect(picked.units).toBeUndefined()
+    expect(['m3', 'm4']).toContain(picked.id)
+  })
+
+  it('refuses rather than silently serving an imperial question', () => {
+    expect(() =>
+      pickQuestion([{ id: 'only', text: 'feet?', answer: 1, units: 'imperial' }], {
+        roomUsedIds: [],
+        retiredIds: new Set(),
+        excludeImperial: true,
+      }),
+    ).toThrow(/No questions left/)
   })
 })
 

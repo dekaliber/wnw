@@ -4,7 +4,13 @@
 now than it did: France is metric, so a French player being asked for a height
 "in feet" is being asked to do a conversion on top of a guess.
 
-Nothing here has been changed. This is the case-by-case list you asked for,
+**Status:** all 57 questions in groups B, C and D are now tagged
+`"units": "imperial"` in the bank, and the host has a **Skip imperial units**
+switch in the lobby settings that leaves the whole set out (243 questions
+remain). Groups A stays untagged — those are unit-free.
+
+The wording below is still unchanged; the switch is an escape hatch, not a
+decision. This is the case-by-case list you asked for,
 sorted by what I think the call is, with the canonical metric figure where one
 exists (these are the real published values, not arithmetic conversions of the
 imperial number — so e.g. Everest is 8,849 m, the surveyed metric height, not
@@ -116,16 +122,20 @@ Two worth calling out specifically:
 
 ## Options for handling this
 
+0. **Skip them entirely** — now built. The host flips one switch and the 57
+   tagged questions never come up. Costs nothing to leave off, so this is the
+   safe default for a mixed table.
 1. **Convert group C outright**, keep B as-is, and accept a handful of
-   imperial oddities in both languages. Least work, one bank.
+   imperial oddities in both languages. Least work, one bank, and it makes the
+   switch unnecessary for 49 of the 57.
 2. **Per-locale answers** — the same question carries `answer` and `answerFr`
-   with different units. Most correct, but it means the mat can show two
-   different numbers for the same question if a table is mixed, which breaks
-   the shared board. **I'd avoid this.**
+   with different units. Most correct in theory, but the mat would have to show
+   two different numbers for one question at a mixed table, which breaks the
+   shared board. **I'd avoid this.**
 3. **Convert group C and drop group B from the French deck**, tagging those
-   six questions as English-only. Keeps every question sensible in its
-   language, at the cost of a slightly smaller French bank.
+   six as English-only. Keeps every question sensible in its language, at the
+   cost of a slightly smaller French bank.
 
-My recommendation is **1 for now, 3 later** if the French deck gets real use.
-Option 2 is a trap — a single shared board can't show two different correct
-answers.
+With the switch in place there is no longer any urgency. My recommendation is
+still **1 when you get to it** — converting group C means a French table can
+leave the switch off and keep 49 more questions — and option 2 remains a trap.

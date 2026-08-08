@@ -106,6 +106,18 @@ function HostSettings({ game, view }: { game: Game; view: ClientView }) {
       </div>
 
       <label className="setting setting--toggle">
+        <span>{t.excludeImperial}</span>
+        <input
+          type="checkbox"
+          checked={config.excludeImperial}
+          onChange={(e) =>
+            game.send({ t: 'config', config: { excludeImperial: e.target.checked } })
+          }
+        />
+      </label>
+      <p className="hint hint--tight">{t.excludeImperialHint}</p>
+
+      <label className="setting setting--toggle">
         <span>{t.timers}</span>
         <input
           type="checkbox"

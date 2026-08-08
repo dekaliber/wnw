@@ -4,6 +4,7 @@ import { BoardLobby } from './BoardLobby.tsx'
 import { BoardRound } from './BoardRound.tsx'
 import { BoardOver } from './BoardOver.tsx'
 import { useAudioUnlock } from './chime.ts'
+import { boardStrings } from './useBoardLocales.ts'
 
 export function BoardApp({ game }: { game: Game }) {
   const { view, connect } = game
@@ -61,7 +62,7 @@ export function BoardApp({ game }: { game: Game }) {
           than letting the ten-second warning silently never fire. */}
       {!soundReady && (
         <p className="board__soundoff" role="status">
-          Click anywhere to enable the 10-second warning sound
+          {boardStrings(view).boardSoundPrompt}
         </p>
       )}
     </>

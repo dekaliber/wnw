@@ -102,6 +102,12 @@ export interface PickOptions {
   roomUsedIds: readonly string[]
   /** Questions asked anywhere in the last 24h. */
   retiredIds: ReadonlySet<string>
+  /**
+   * Drop imperial-unit questions entirely. Unlike the other two constraints
+   * this one is never relaxed — the host turned it on because somebody at the
+   * table cannot answer them, so serving one anyway defeats the point.
+   */
+  excludeImperial?: boolean
   random?: () => number
 }
 
@@ -115,13 +121,16 @@ export interface PickOptions {
 export function pickQuestion(bank: readonly Question[], options: PickOptions): Question {
   if (bank.length === 0) throw new Error('Question bank is empty')
 
-  const { roomUsedIds, retiredIds, random = Math.random } = options
+  const { roomUsedIds, retiredIds, excludeImperial = false, random = Math.random } = options
   const used = new Set(roomUsedIds)
 
-  const unusedHere = bank.filter((q) => !used.has(q.id))
+  const eligible = excludeImperial ? bank.filter((q) => q.units !== 'imperial') : bank
+  if (eligible.length === 0) throw new Error('No questions left after filtering')
+
+  const unusedHere = eligible.filter((q) => !used.has(q.id))
   const idealPool = unusedHere.filter((q) => !retiredIds.has(q.id))
 
-  const pool = idealPool.length > 0 ? idealPool : unusedHere.length > 0 ? unusedHere : bank
+  const pool = idealPool.length > 0 ? idealPool : unusedHere.length > 0 ? unusedHere : eligible
 
   return pool[Math.floor(random() * pool.length)]!
 }

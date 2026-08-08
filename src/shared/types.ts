@@ -21,6 +21,13 @@ export interface Question {
   /** Rendering hint: 'plain' | 'money' | 'year' | 'percent'. */
   format?: AnswerFormat
   /**
+   * Set when the answer is stated in imperial units, so a host with metric
+   * speakers at the table can leave the whole set out. Questions whose answer
+   * happens to be unit-free — a ratio, or the Celsius/Fahrenheit crossing —
+   * are deliberately not tagged.
+   */
+  units?: 'imperial'
+  /**
    * French text. Sent alongside the English rather than resolved server-side,
    * because language is per-player: two people at one table can be reading the
    * same question in different languages, so the server cannot pick one.
@@ -32,6 +39,13 @@ export interface Question {
 
 export type AnswerFormat = 'plain' | 'money' | 'year' | 'percent'
 
+/**
+ * Lives here rather than in the client so the server can track what each
+ * player is reading — which is what lets the board notice a mixed-language
+ * table and show both, without anyone configuring anything.
+ */
+export type Locale = 'en' | 'fr'
+
 export interface Player {
   id: string
   name: string
@@ -41,6 +55,8 @@ export interface Player {
   connected: boolean
   /** Lobby only: the player has said they are ready to start. */
   ready: boolean
+  /** What this player is reading the game in; drives the board's bilingual mode. */
+  locale: Locale
 }
 
 /**
@@ -113,6 +129,12 @@ export interface GameConfig {
   betSeconds: number
   /** When false, phases only advance once everyone is in (no clock pressure). */
   timersEnabled: boolean
+  /**
+   * Leave out questions whose answer is in feet, miles, pounds and so on.
+   * For a table with metric speakers those questions are really two puzzles —
+   * the guess, and a unit conversion nobody signed up for.
+   */
+  excludeImperial: boolean
 }
 
 export const DEFAULT_CONFIG: GameConfig = {
@@ -120,6 +142,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   guessSeconds: 45,
   betSeconds: 30,
   timersEnabled: true,
+  excludeImperial: false,
 }
 
 export interface GameState {
@@ -148,6 +171,7 @@ export type ClientMessage =
   | { t: 'rename'; name: string }
   | { t: 'config'; config: Partial<GameConfig> }
   | { t: 'ready'; ready: boolean }
+  | { t: 'locale'; locale: Locale }
   | { t: 'start' }
   | { t: 'guess'; value: number }
   | { t: 'bet'; chip: 0 | 1; slotIndex: number; wager: number }

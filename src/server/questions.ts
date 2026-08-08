@@ -28,6 +28,9 @@ const ledger = new QuestionLedger(fileStore(LEDGER_PATH))
 
 export const questionCount = bank.length
 
+/** How many of the bank state their answer in imperial units. */
+export const imperialCount = bank.filter((q) => q.units === 'imperial').length
+
 /** How many questions are currently resting, for the startup banner. */
 export function retiredCount(): number {
   return ledger.retired().size
@@ -39,10 +42,14 @@ export function retiredCount(): number {
  * `usedIds` is the room's own history, which the engine carries across
  * rematches; the ledger covers every other room on this server.
  */
-export function drawQuestion(usedIds: string[]): Question {
+export function drawQuestion(
+  usedIds: string[],
+  options: { excludeImperial: boolean } = { excludeImperial: false },
+): Question {
   const question = pickQuestion(bank, {
     roomUsedIds: usedIds,
     retiredIds: ledger.retired(),
+    excludeImperial: options.excludeImperial,
   })
   ledger.retire(question.id)
   return question

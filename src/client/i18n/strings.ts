@@ -40,6 +40,9 @@ const en = {
   settings: 'Settings',
   questionsSetting: 'Questions',
   timers: 'Timers',
+  excludeImperial: 'Skip imperial units',
+  excludeImperialHint:
+    'Leaves out questions answered in feet, miles, pounds and Fahrenheit. Worth turning on if anyone at the table thinks in metric.',
   secondsToGuess: 'Seconds to guess',
   secondsToBet: 'Seconds to bet',
   timerHint:
@@ -146,6 +149,16 @@ const en = {
     },
   ],
 
+  // -- board (the shared TV surface) --------------------------------------
+  boardAnswer: 'Answer',
+  boardScanToJoin: 'Scan to join',
+  boardOrTypeItIn: '…or type it in',
+  boardInCount: (acted: number, total: number) => `of ${total} in`,
+  boardAllIn: 'All in.',
+  boardAllInWaitingHost: 'All in — waiting on the host to move on.',
+  boardNoWifi: 'No Wi-Fi address',
+  boardSoundPrompt: 'Click anywhere to enable the 10-second warning sound',
+
   // -- connection --------------------------------------------------------
   reconnecting: 'Reconnecting…',
   couldNotJoin: 'Could not join — please reload and try again.',
@@ -178,6 +191,9 @@ const fr: typeof en = {
   settings: 'Réglages',
   questionsSetting: 'Questions',
   timers: 'Minuteurs',
+  excludeImperial: 'Ignorer les unités impériales',
+  excludeImperialHint:
+    'Exclut les questions dont la réponse est en pieds, miles, livres ou Fahrenheit. À activer si quelqu’un à la table raisonne en métrique.',
   secondsToGuess: 'Secondes pour deviner',
   secondsToBet: 'Secondes pour parier',
   timerHint:
@@ -284,6 +300,16 @@ const fr: typeof en = {
       body: 'Pariez sur la case gagnante et vous récupérez votre mise plus la cote. Si c’est votre propre réponse qui gagne, vous empochez 3 jetons bonus en plus. Le plus gros tas après la dernière question l’emporte.',
     },
   ],
+
+  // -- board (the shared TV surface) --------------------------------------
+  boardAnswer: 'Réponse',
+  boardScanToJoin: 'Scannez pour rejoindre',
+  boardOrTypeItIn: '…ou saisissez-le',
+  boardInCount: (acted: number, total: number) => `sur ${total}`,
+  boardAllIn: 'Tout le monde a joué.',
+  boardAllInWaitingHost: 'Tout le monde a joué — en attente de l’hôte.',
+  boardNoWifi: 'Aucune adresse Wi-Fi',
+  boardSoundPrompt: 'Cliquez n’importe où pour activer le son des 10 secondes',
 
   // -- connection --------------------------------------------------------
   reconnecting: 'Reconnexion…',

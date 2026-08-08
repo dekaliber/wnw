@@ -17,6 +17,9 @@ interface MatProps {
   onSlotClick?: (index: number) => void
   selectable?: (index: number) => boolean
   chipFor?: (index: number) => 0 | 1 | null
+  /** Passed in rather than read from context: the mat is rendered by both the
+      phone (player's own language) and the board (the room's). */
+  allTooHighLabel?: string
 }
 
 export function Mat({
@@ -28,6 +31,7 @@ export function Mat({
   onSlotClick,
   selectable,
   chipFor,
+  allTooHighLabel = 'All Answers Too High',
 }: MatProps) {
   const decided = winningSlotIndex !== null
 
@@ -58,7 +62,7 @@ export function Mat({
           >
             <span className="slot__body">
               {slot.index === ALL_TOO_HIGH ? (
-                <span className="slot__too-high">All Answers Too High</span>
+                <span className="slot__too-high">{allTooHighLabel}</span>
               ) : slot.guess ? (
                 <Card view={view} slot={slot} />
               ) : (
