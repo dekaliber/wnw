@@ -86,11 +86,56 @@ const server = createServer((req: IncomingMessage, res: ServerResponse) => {
 
 const wss = new WebSocketServer({ server, path: '/ws' })
 
+/**
+ * Heartbeat.
+ *
+ * A phone that leaves Wi-Fi range, or a host laptop that sleeps, drops the
+ * connection without ever sending a FIN. Both ends keep a socket that reports
+ * itself open and will never carry another byte — so the room goes on
+ * broadcasting to a dead player, and the phone sits frozen on whatever screen
+ * it last received. Nothing in the close path runs, because nothing closed.
+ *
+ * Pinging is what turns that silent half-open socket into a real close. It also
+ * keeps the connection from looking idle to the router, which is the other way
+ * these die: a game spends minutes at a time with nothing to say.
+ *
+ * Each tick sends two things. The protocol-level `ping` is what this side
+ * judges liveness by. The `{ t: 'ping' }` frame is for the other side: browsers
+ * answer protocol pings in the network stack and never tell the page, so a
+ * client watching for silence needs a frame that actually reaches `onmessage`.
+ */
+const HEARTBEAT_MS = 15_000
+const alive = new WeakMap<WebSocket, boolean>()
+
+const heartbeat = setInterval(() => {
+  for (const socket of wss.clients) {
+    // Missed the whole previous interval without answering: the peer is gone.
+    // `terminate` rather than `close` — a half-open socket will never complete
+    // a closing handshake, and we would wait out the timeout for nothing.
+    if (alive.get(socket) === false) {
+      socket.terminate()
+      continue
+    }
+    alive.set(socket, false)
+    socket.ping()
+    if (socket.readyState === socket.OPEN) {
+      const beat: ServerMessage = { t: 'ping' }
+      socket.send(JSON.stringify(beat))
+    }
+  }
+}, HEARTBEAT_MS)
+
+// Never hold the process open on the heartbeat alone.
+heartbeat.unref?.()
+
 let nextConnectionId = 1
 
 wss.on('connection', (socket: WebSocket) => {
   const connectionId = String(nextConnectionId++)
   sockets.set(connectionId, socket)
+  alive.set(socket, true)
+
+  socket.on('pong', () => alive.set(socket, true))
 
   let joinedRoom: string | null = null
 

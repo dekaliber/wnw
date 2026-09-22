@@ -187,6 +187,12 @@ export type ServerMessage =
   | { t: 'watching'; roomCode: string }
   | { t: 'state'; state: ClientView }
   | { t: 'error'; message: string; code?: ErrorCode }
+  /**
+   * Liveness only, carrying nothing. Browsers never surface protocol-level
+   * ping/pong frames to JavaScript, so a client cannot tell a healthy quiet
+   * socket from a dead one without a frame it can actually see in `onmessage`.
+   */
+  | { t: 'ping' }
 
 /** Machine-readable so clients never have to match on user-facing copy. */
 export type ErrorCode = 'room-not-found'

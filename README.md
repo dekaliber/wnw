@@ -29,6 +29,34 @@ every phone in the room.
 > `src/client/id.ts` exists for exactly this reason. Anything added to the
 > client must be checked over the LAN IP, not just on localhost.
 
+## Staying connected
+
+Phones drop off constantly — screens lock, people walk to the kitchen, Wi-Fi
+blips. Reconnecting is automatic, but only because two things are in place.
+
+The server pings every socket every 15s and terminates any that misses a beat.
+This is what makes a *half-open* connection detectable: a phone that leaves
+range, or a host laptop that sleeps, dies without sending a FIN, so both ends
+keep a socket that reports itself open and will never carry another byte.
+Without the ping the room broadcasts into the void forever and the player's
+`close` handler never runs, so they linger in the lobby as a ghost.
+
+Each ping goes out twice — once as a protocol frame, once as `{ t: 'ping' }`.
+Browsers answer protocol pings down in the network stack and never tell the
+page, so the client cannot use them to tell a healthy quiet socket from a dead
+one. It watches for 40s of silence in `onmessage` instead, and closes the
+socket itself so the existing reconnect backoff can take over. **Anything that
+changes the ping interval has to stay well under that 40s.**
+
+A reload is the other half. People refresh when a screen looks stuck, and that
+used to cost them their seat — back to the join form, retyping a room code
+mid-round. `rejoinTarget` in `src/client/player/PlayerApp.tsx` reconnects from
+what is already in localStorage. It will never auto-*create* a room: guessing
+that wrong strands everyone else in the room the player was already in.
+
+> Symptom worth recognising: phones that only update when manually refreshed.
+> That is a dead socket nobody noticed, not a slow one.
+
 ## Development
 
 ```bash
