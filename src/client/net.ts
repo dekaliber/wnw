@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { ClientMessage, ClientView, Phase, ServerMessage } from '../shared/types.ts'
+import type { ClientMessage, ClientView, ServerMessage } from '../shared/types.ts'
 import { newId } from './id.ts'
 
 const ID_KEY = 'wnw.playerId'
@@ -53,59 +53,6 @@ function socketUrl(): string {
  */
 const SILENCE_MS = 40_000
 
-/**
- * A tap made while the socket is down.
- *
- * Dropping these silently is indistinguishable from the game ignoring you: the
- * chip does not move, nothing says why, and the round ends without your bet.
- * So they are held and replayed once the socket is back.
- *
- * Replaying blindly is worse than dropping, though. `guess` is only legal
- * during the question phase — but *every* round has a question phase, so a
- * guess held through a reconnect could land against the next round's question,
- * which the server has no way to recognise as stale. A held `advance` is worse
- * still: if the phase moved on by itself, replaying it skips the next one.
- *
- * So each one records the phase and round it was composed in, and is replayed
- * only if the game is still there. Anything else is dropped and *said out
- * loud*, which is the part that was actually missing.
- */
-interface Pending {
-  message: ClientMessage
-  at: number
-  phase: Phase | null
-  round: number | null
-}
-
-/** Where the game was when a message was composed. */
-interface Context {
-  phase: Phase | null
-  round: number | null
-}
-
-/**
- * Messages that mean the same thing whenever they arrive. Everything else is
- * an action *within* a phase and has to be checked against one.
- */
-const CONTEXT_FREE = new Set<ClientMessage['t']>(['rename', 'locale'])
-
-/** Long enough to cover a reconnect, far short of a round. */
-const PENDING_TTL_MS = 20_000
-
-/** A stuck player mashing a button must not build an unbounded replay. */
-const PENDING_LIMIT = 16
-
-/**
- * Whether a held message still means what it meant when it was tapped.
- *
- * Pure and exported so the policy can be tested without a socket.
- */
-export function stillApplies(entry: Pending, now: number, context: Context): boolean {
-  if (now - entry.at > PENDING_TTL_MS) return false
-  if (CONTEXT_FREE.has(entry.message.t)) return true
-  return entry.phase === context.phase && entry.round === context.round
-}
-
 /** What the client wants to be doing; replayed verbatim after a reconnect. */
 export type Intent =
   | { kind: 'idle' }
@@ -143,40 +90,9 @@ export function useGame(): Game {
   const closing = useRef(false)
   /** When anything last arrived. The only real liveness signal we get. */
   const lastMessage = useRef(0)
-  /** Taps made while the socket was down, awaiting a replay that still fits. */
-  const pending = useRef<Pending[]>([])
-  /** The phase/round the last state put us in, for judging that fit. */
-  const context = useRef<Context>({ phase: null, round: null })
   const watchdog = useRef<ReturnType<typeof setInterval> | null>(null)
   /** localClock - serverClock, sampled each time a state message lands. */
   const drift = useRef(0)
-
-  /**
-   * Send everything held during the outage that still fits the game as it now
-   * stands, and say so when something did not. Silence here is the whole bug.
-   */
-  const flush = useCallback((ws: WebSocket) => {
-    const held = pending.current
-    pending.current = []
-    const now = Date.now()
-    let dropped = 0
-
-    for (const entry of held) {
-      if (stillApplies(entry, now, context.current)) {
-        ws.send(JSON.stringify(entry.message))
-      } else {
-        dropped += 1
-      }
-    }
-
-    if (dropped > 0) {
-      setError(
-        dropped === 1
-          ? 'The round moved on before that reached the table — tap it again.'
-          : `The round moved on before ${dropped} taps reached the table — try again.`,
-      )
-    }
-  }, [])
 
   const open = useCallback(() => {
     if (intent.current.kind === 'idle') return
@@ -226,10 +142,6 @@ export function useGame(): Game {
       // point of it, so there is deliberately no branch for it below.
       if (msg.t === 'state') {
         drift.current = Date.now() - msg.state.now
-        context.current = { phase: msg.state.phase, round: msg.state.round?.number ?? null }
-        // Replay against *this* state rather than on `onopen`: until the first
-        // state lands there is nothing to judge a held message against.
-        if (pending.current.length > 0) flush(ws)
         setView(msg.state)
       } else if (msg.t === 'joined') {
         rememberRoom(msg.roomCode)
@@ -249,7 +161,6 @@ export function useGame(): Game {
           setRoomMissing(true)
           closing.current = true
           intent.current = { kind: 'idle' }
-          pending.current = []
           socket.current?.close()
         }
       }
@@ -268,7 +179,7 @@ export function useGame(): Game {
     }
 
     ws.onerror = () => ws.close()
-  }, [flush])
+  }, [])
 
   const connect = useCallback(
     (next: Intent) => {
@@ -289,8 +200,6 @@ export function useGame(): Game {
     if (retryTimer.current) clearTimeout(retryTimer.current)
     socket.current?.close()
     socket.current = null
-    pending.current = []
-    context.current = { phase: null, round: null }
     forgetRoom()
     setView(null)
     setStatus('closed')
@@ -298,16 +207,7 @@ export function useGame(): Game {
 
   const send = useCallback((message: ClientMessage) => {
     const ws = socket.current
-    if (ws?.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(message))
-      return
-    }
-    // Not in a game, so there is nothing for a replay to land in.
-    if (intent.current.kind === 'idle') return
-
-    pending.current.push({ message, at: Date.now(), ...context.current })
-    // Oldest first: the newest tap is the one they are waiting on.
-    if (pending.current.length > PENDING_LIMIT) pending.current.shift()
+    if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message))
   }, [])
 
   /**
