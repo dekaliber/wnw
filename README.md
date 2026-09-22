@@ -54,6 +54,15 @@ mid-round. `rejoinTarget` in `src/client/player/PlayerApp.tsx` reconnects from
 what is already in localStorage. It will never auto-*create* a room: guessing
 that wrong strands everyone else in the room the player was already in.
 
+Taps made during an outage are held and replayed, but only where they still
+mean the same thing. `guess` is legal in any question phase and *every* round
+has one, so a guess held across a reconnect could land against the next
+round's question with the server none the wiser; a held `advance` would skip a
+phase that moved on by itself. So each held message records the phase and
+round it was composed in, and `stillApplies` in `src/client/net.ts` drops the
+ones that no longer fit — with a toast, because dropping quietly is what made
+this worth fixing.
+
 > Symptom worth recognising: phones that only update when manually refreshed.
 > That is a dead socket nobody noticed, not a slow one.
 
