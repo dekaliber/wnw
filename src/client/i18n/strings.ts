@@ -161,6 +161,8 @@ const en = {
 
   // -- connection --------------------------------------------------------
   reconnecting: 'Reconnecting…',
+  reconnectingHint: 'Hold on — your chips are safe.',
+  reconnected: 'Back in',
   couldNotJoin: 'Could not join — please reload and try again.',
 }
 
@@ -313,6 +315,8 @@ const fr: typeof en = {
 
   // -- connection --------------------------------------------------------
   reconnecting: 'Reconnexion…',
+  reconnectingHint: 'Un instant — vos jetons sont en sécurité.',
+  reconnected: 'C’est reparti',
   couldNotJoin: 'Impossible de rejoindre — rechargez et réessayez.',
 }
 

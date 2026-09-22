@@ -202,18 +202,95 @@ input {
   }
 }
 
-.reconnecting {
+/* --- connection interruption -------------------------------------------- */
+
+/* The game, still readable underneath but plainly not accepting taps. */
+.shell--interrupted {
+  pointer-events: none;
+  opacity: 0.4;
+  filter: saturate(0.6);
+  transition: opacity 0.2s ease, filter 0.2s ease;
+}
+
+.connection {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  padding: 5px;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: 0.78rem;
-  font-weight: 700;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  /* Nothing here is tappable, and letting a stray tap through to the dimmed
+     board behind would defeat the point. */
+  pointer-events: all;
+  background: rgb(8 9 14 / 0.55);
+  backdrop-filter: blur(2px);
+  animation: connection-in 0.18s ease;
+}
+
+/* On the way out it must not sit in front of the game it just released. */
+.connection--settled {
+  pointer-events: none;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+@keyframes connection-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.connection__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-width: 220px;
+  padding: 26px 30px;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  box-shadow: 0 18px 50px rgb(0 0 0 / 0.5);
   text-align: center;
-  z-index: 60;
+  animation: rise 0.2s ease;
+}
+
+.connection__title {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.connection__hint {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.connection__spinner {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 3px solid rgb(255 255 255 / 0.18);
+  border-top-color: var(--accent);
+  animation: connection-spin 0.7s linear infinite;
+}
+
+@keyframes connection-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.connection__tick {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--win);
+  /* Dark ink: --win is a light green, and white on it is barely legible. */
+  color: #0d2a18;
+  font-size: 1rem;
+  font-weight: 800;
 }
 
 @keyframes rise {
@@ -588,7 +665,7 @@ input {
   /* Lets the card shrink below its content's intrinsic width. */
   min-width: 0;
   padding: 22px;
-  border-radius: 18px;
+  border-radius: var(--radius);
   background: var(--bg-raised);
   border: 1px solid var(--line);
   box-shadow: 0 24px 60px rgb(0 0 0 / 0.6);

@@ -34,8 +34,16 @@ every phone in the room.
 Phones drop off constantly — screens lock, people walk to the kitchen, Wi-Fi
 blips. Reconnecting is automatic, but only because two things are in place.
 
-The server pings every socket every 15s and terminates any that misses a beat.
-This is what makes a *half-open* connection detectable: a phone that leaves
+The server pings every socket every 15s and terminates one that has missed
+three in a row. The tolerance is the point: cutting a socket on its first
+missed beat looks correct and is not — a phone's radio sleeps between packets
+and a pong a second late is an ordinary phone being a phone. Doing that
+disconnected and reconnected live players every 15s, and since the room
+broadcasts on both attach and detach, every screen re-rendered twice a beat.
+That was a visible flicker on every phone in the room, and it is worth
+remembering before tightening this number again.
+
+Pinging at all is what makes a *half-open* connection detectable: a phone that leaves
 range, or a host laptop that sleeps, dies without sending a FIN, so both ends
 keep a socket that reports itself open and will never carry another byte.
 Without the ping the room broadcasts into the void forever and the player's
@@ -47,6 +55,17 @@ page, so the client cannot use them to tell a healthy quiet socket from a dead
 one. It watches for 40s of silence in `onmessage` instead, and closes the
 socket itself so the existing reconnect backoff can take over. **Anything that
 changes the ping interval has to stay well under that 40s.**
+
+While a phone is reconnecting its screen is dimmed behind a modal and stops
+accepting taps, and a brief "Back in" confirms the return. This replaced an
+attempt to hold taps and replay them on reconnect, which cannot be made safe:
+a guess is legal in any question phase and *every* round has one, so a held
+tap could land against the next round's question with the server unable to
+tell it was stale. Refusing a tap up front is both simpler and more honest
+than accepting one and deciding later whether it counted. It only works
+because the heartbeat above makes `reconnecting` a trustworthy state — before
+it, a dead socket reported itself open indefinitely and the UI would have
+stayed live over a connection that was gone.
 
 A reload is the other half. People refresh when a screen looks stuck, and that
 used to cost them their seat — back to the join form, retyping a room code

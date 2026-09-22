@@ -105,23 +105,44 @@ const wss = new WebSocketServer({ server, path: '/ws' })
  * client watching for silence needs a frame that actually reaches `onmessage`.
  */
 const HEARTBEAT_MS = 15_000
-const alive = new WeakMap<WebSocket, boolean>()
+
+/**
+ * How many beats a socket may miss before we give up on it.
+ *
+ * Terminating on the first miss is wrong, and was: a phone's radio sleeps
+ * between packets, the browser answers pings on its own schedule, and a pong
+ * that arrives a second late is an ordinary phone being a phone. Cutting those
+ * players produced a disconnect and a reconnect every 15s, and since both ends
+ * broadcast on attach and detach, every screen in the room re-rendered twice a
+ * beat — which is what the flicker was.
+ *
+ * Three misses is ~45s of genuine silence. Nothing is waiting on this number:
+ * a *player* who has really gone is noticed by the phase rules, not here. All
+ * this decides is when a dead socket's seat is released, so it can afford to
+ * be slow and certain rather than fast and wrong.
+ */
+const MISSES_ALLOWED = 3
+const missed = new WeakMap<WebSocket, number>()
 
 const heartbeat = setInterval(() => {
   for (const socket of wss.clients) {
-    // Missed the whole previous interval without answering: the peer is gone.
-    // `terminate` rather than `close` — a half-open socket will never complete
-    // a closing handshake, and we would wait out the timeout for nothing.
-    if (alive.get(socket) === false) {
+    const misses = (missed.get(socket) ?? 0) + 1
+    if (misses > MISSES_ALLOWED) {
+      // `terminate` rather than `close` — a half-open socket will never
+      // complete a closing handshake, and we would wait out the timeout for
+      // nothing.
       socket.terminate()
       continue
     }
-    alive.set(socket, false)
+    missed.set(socket, misses)
+
+    // Pinging a socket that has not finished opening throws, and the error
+    // handler below would close a connection that was doing nothing wrong.
+    if (socket.readyState !== socket.OPEN) continue
+
     socket.ping()
-    if (socket.readyState === socket.OPEN) {
-      const beat: ServerMessage = { t: 'ping' }
-      socket.send(JSON.stringify(beat))
-    }
+    const beat: ServerMessage = { t: 'ping' }
+    socket.send(JSON.stringify(beat))
   }
 }, HEARTBEAT_MS)
 
@@ -133,9 +154,12 @@ let nextConnectionId = 1
 wss.on('connection', (socket: WebSocket) => {
   const connectionId = String(nextConnectionId++)
   sockets.set(connectionId, socket)
-  alive.set(socket, true)
+  missed.set(socket, 0)
 
-  socket.on('pong', () => alive.set(socket, true))
+  // Any sign of life resets the count, not just a pong: a phone sending a bet
+  // is demonstrably there whatever its pong timing looks like.
+  const heard = () => missed.set(socket, 0)
+  socket.on('pong', heard)
 
   let joinedRoom: string | null = null
 
@@ -145,6 +169,7 @@ wss.on('connection', (socket: WebSocket) => {
   }
 
   socket.on('message', (raw) => {
+    heard()
     let msg: ClientMessage
     try {
       msg = JSON.parse(String(raw))
