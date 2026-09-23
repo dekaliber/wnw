@@ -27,7 +27,7 @@ export function rejoinTarget(
   search: string,
   remembered: string,
   savedName: string,
-): { roomCode: string; name: string } | null {
+): { roomCode: string; name: string; quiet: boolean } | null {
   // `?room=` wins over the remembered room, matching the join form: a fresh
   // link for tonight must never resolve back into last week's game.
   const fromUrl = new URLSearchParams(search).get('room')
@@ -37,7 +37,9 @@ export function rejoinTarget(
   // never automatic — that is a deliberate act, and guessing it wrong strands
   // everyone else in the room this player was already in.
   if (roomCode.length !== 4 || !name) return null
-  return { roomCode, name }
+  // A link is a request, so a dead room is worth explaining; a code from
+  // memory is only a guess, and failing it should make no noise.
+  return { roomCode, name, quiet: fromUrl === null }
 }
 
 export function PlayerApp({ game }: { game: Game }) {

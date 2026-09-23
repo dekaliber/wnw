@@ -12,8 +12,14 @@ function roomFromUrl(): string | null {
   return new URLSearchParams(location.search).get('room')
 }
 
+/**
+ * With a name remembered too, the remembered room is already being tried in
+ * the background — so if this form is still showing, that room has gone, and
+ * pre-filling its code would only invite joining it again.
+ */
 function initialRoomCode(): string {
-  return (roomFromUrl() ?? rememberedRoom()).toUpperCase().slice(0, 4)
+  const remembered = rememberedName().trim() ? '' : rememberedRoom()
+  return (roomFromUrl() ?? remembered).toUpperCase().slice(0, 4)
 }
 
 export function Join({ game }: { game: Game }) {

@@ -3,7 +3,14 @@ import { rejoinTarget } from './PlayerApp.tsx'
 
 describe('rejoining after a reload', () => {
   it('rejoins the remembered room under the remembered name', () => {
-    expect(rejoinTarget('', 'ABCD', 'Tai')).toEqual({ roomCode: 'ABCD', name: 'Tai' })
+    expect(rejoinTarget('', 'ABCD', 'Tai')).toEqual({ roomCode: 'ABCD', name: 'Tai', quiet: true })
+  })
+
+  // After a server restart the remembered room is gone. That is expected, not
+  // news, so it must not greet whoever opens the page with an error.
+  it('fails quietly for a room from memory, but not for one from a link', () => {
+    expect(rejoinTarget('', 'ABCD', 'Tai')?.quiet).toBe(true)
+    expect(rejoinTarget('?room=ABCD', '', 'Tai')?.quiet).toBe(false)
   })
 
   // The regression this exists for: a refresh mid-round used to land on the

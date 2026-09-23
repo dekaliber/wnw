@@ -57,7 +57,18 @@ const SILENCE_MS = 40_000
 export type Intent =
   | { kind: 'idle' }
   | { kind: 'create'; name: string }
-  | { kind: 'join'; roomCode: string; name: string }
+  | {
+      kind: 'join'
+      roomCode: string
+      name: string
+      /**
+       * A guess from memory rather than a request: the reload rejoin, trying
+       * whatever room this phone was last in. If that room has gone — nearly
+       * always because the server restarted — there is nothing to tell the
+       * person, who never asked for it; they just get a clean join form.
+       */
+      quiet?: boolean
+    }
   | { kind: 'watch'; roomCode: string }
 
 export interface Game {
@@ -154,11 +165,15 @@ export function useGame(): Game {
       } else if (msg.t === 'watching') {
         intent.current = { kind: 'watch', roomCode: msg.roomCode }
       } else if (msg.t === 'error') {
-        setError(msg.message)
+        const current = intent.current
+        const quiet = msg.code === 'room-not-found' && current.kind === 'join' && current.quiet
+        if (!quiet) setError(msg.message)
         if (msg.code === 'room-not-found') {
           // Stop retrying into a room that is not there; the join screen
-          // offers to start a new game instead.
-          setRoomMissing(true)
+          // offers to start a new game instead. The code is forgotten too, so
+          // the next reload does not go looking for it again.
+          forgetRoom()
+          if (!quiet) setRoomMissing(true)
           closing.current = true
           intent.current = { kind: 'idle' }
           socket.current?.close()
