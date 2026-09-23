@@ -323,6 +323,16 @@ function handleMessage(
       return { state: { ...state, round: { ...state.round, locked } } }
     }
 
+    case 'tally': {
+      if (!isHost) return { state, error: 'Only the host can move the tally on.' }
+      const round = state.round
+      if (state.phase !== 'reveal' || !round?.result) return { state }
+      // One past the last player means "show standings"; nothing beyond that.
+      // A stale double tap simply does nothing rather than erroring.
+      if (round.tallied >= round.result.deltas.length) return { state }
+      return { state: { ...state, round: { ...round, tallied: round.tallied + 1 } } }
+    }
+
     case 'advance': {
       if (!isHost) return { state, error: 'Only the host can advance the game.' }
       return { state: advancePhase(state, deps) }
@@ -383,6 +393,7 @@ function beginRound(
     locked: [],
     result: null,
     isTiebreak,
+    tallied: 0,
   }
   return {
     ...state,

@@ -78,7 +78,12 @@ const en = {
   takeBack: 'Take back',
   raise: 'Raise',
   allIn: 'All in',
-  chipsLeft: (n: number) => `${n} chip${n === 1 ? '' : 's'} left`,
+  chipsLeft: (n: number) => `${n} wager chip${n === 1 ? '' : 's'} left`,
+  unusedChipTitle: 'You still have a wager chip',
+  unusedChipBody:
+    'Wager chips always come back, win or lose — placing it can only win you chips, never cost you any. Sure about one answer? Put both chips on the same slot to double down.',
+  unusedChipPlace: 'Back to betting',
+  unusedChipLockAnyway: 'Lock in anyway',
   chipsToRaise: (n: number) => `${n} chips to raise`,
   lockedTapToChange: (locked: number, total: number) =>
     `Locked in — tap to change (${locked}/${total})`,
@@ -159,6 +164,28 @@ const en = {
   boardNoWifi: 'No Wi-Fi address',
   boardSoundPrompt: 'Click anywhere to enable the 10-second warning sound',
 
+  // -- board scoring playthrough -------------------------------------------
+  tallyNoBets: 'No chips on the mat',
+  tallyChips: (n: number) => `${n} chip${n === 1 ? '' : 's'}`,
+  tallyBetOn: (value: string) => `Bet on ${value}`,
+  // "Wager chips" because they are the part of a bet that always comes back.
+  tallyBet: (n: number) => `${n} wager chip${n === 1 ? '' : 's'}`,
+  tallyRaised: (n: number) => `raised ${n}`,
+  tallyPays: (odds: number) => `pays ${odds} to 1`,
+  tallyWon: (n: number) => `won ${n}`,
+  // "To the bank" because playtesters assumed a loss went to another player.
+  tallyLost: (n: number) => `lost ${n} to the bank`,
+  // The chips always come back, so an unraised miss costs nothing.
+  tallyLostNothing: 'lost 0',
+  slotWinner: 'Winner',
+  summaryBefore: 'Before',
+  summaryChange: 'Round',
+  summaryAfter: 'Now',
+  tallyBonus: (value: string) => `wrote the winning guess, ${value}`,
+  tallyBonusTitle: 'Bonus',
+  tallyNextPlayer: 'Next player',
+  tallyShowStandings: 'Show standings',
+
   // -- connection --------------------------------------------------------
   reconnecting: 'Reconnecting…',
   reconnectingHint: 'Hold on — your chips are safe.',
@@ -232,7 +259,13 @@ const fr: typeof en = {
   takeBack: 'Reprendre',
   raise: 'Miser',
   allIn: 'Tapis',
-  chipsLeft: (n: number) => `${n} jeton${n === 1 ? '' : 's'} restant${n === 1 ? '' : 's'}`,
+  chipsLeft: (n: number) =>
+    `${n} jeton${n === 1 ? '' : 's'} de pari restant${n === 1 ? '' : 's'}`,
+  unusedChipTitle: 'Il vous reste un jeton de pari',
+  unusedChipBody:
+    'Les jetons de pari reviennent toujours, gagné ou perdu — le placer ne peut que vous rapporter, jamais vous coûter. Sûr d’une réponse ? Mettez vos deux jetons sur la même case pour doubler la mise.',
+  unusedChipPlace: 'Retour aux paris',
+  unusedChipLockAnyway: 'Valider quand même',
   chipsToRaise: (n: number) => `${n} jetons à miser`,
   lockedTapToChange: (locked: number, total: number) =>
     `Validé — appuyez pour changer (${locked}/${total})`,
@@ -312,6 +345,26 @@ const fr: typeof en = {
   boardAllInWaitingHost: 'Tout le monde a joué — en attente de l’hôte.',
   boardNoWifi: 'Aucune adresse Wi-Fi',
   boardSoundPrompt: 'Cliquez n’importe où pour activer le son des 10 secondes',
+
+  // -- board scoring playthrough -------------------------------------------
+  tallyNoBets: 'Aucun jeton sur le tapis',
+  tallyChips: (n: number) => `${n} jeton${n > 1 ? 's' : ''}`,
+  tallyBetOn: (value: string) => `Pari sur ${value}`,
+  // « Miser » is already what the phone calls a raise, so the chips are counted instead.
+  tallyBet: (n: number) => `${n} jeton${n > 1 ? 's' : ''} de pari`,
+  tallyRaised: (n: number) => `mise ${n}`,
+  tallyPays: (odds: number) => `paie ${odds} contre 1`,
+  tallyWon: (n: number) => `gagne ${n}`,
+  tallyLost: (n: number) => `perd ${n} au profit de la banque`,
+  tallyLostNothing: 'perd 0',
+  slotWinner: 'Gagnante',
+  summaryBefore: 'Avant',
+  summaryChange: 'Manche',
+  summaryAfter: 'Total',
+  tallyBonus: (value: string) => `a écrit la réponse gagnante, ${value}`,
+  tallyBonusTitle: 'Bonus',
+  tallyNextPlayer: 'Joueur suivant',
+  tallyShowStandings: 'Voir le classement',
 
   // -- connection --------------------------------------------------------
   reconnecting: 'Reconnexion…',

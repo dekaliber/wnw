@@ -10,6 +10,9 @@ import { useT } from './i18n/LocaleProvider.tsx'
  *
  * The cancel button takes focus so a stray Return dismisses rather than
  * confirms.
+ *
+ * `nudge` is for the gentler case: nothing breaks if they carry on, but going
+ * back is the better move, so going back is the highlighted button.
  */
 export function Confirm({
   title,
@@ -17,12 +20,16 @@ export function Confirm({
   confirmLabel,
   onConfirm,
   onCancel,
+  cancelLabel,
+  tone = 'danger',
 }: {
   title: string
   body: string
   confirmLabel: string
   onConfirm: () => void
   onCancel: () => void
+  cancelLabel?: string
+  tone?: 'danger' | 'nudge'
 }) {
   const t = useT()
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -44,10 +51,19 @@ export function Confirm({
         <h2 className="modal__title">{title}</h2>
         <p className="modal__body">{body}</p>
         <div className="modal__actions">
-          <button ref={cancelRef} type="button" className="btn btn--ghost" onClick={onCancel}>
-            {t.cancel}
+          <button
+            ref={cancelRef}
+            type="button"
+            className={`btn ${tone === 'nudge' ? 'btn--primary' : 'btn--ghost'}`}
+            onClick={onCancel}
+          >
+            {cancelLabel ?? t.cancel}
           </button>
-          <button type="button" className="btn btn--danger" onClick={onConfirm}>
+          <button
+            type="button"
+            className={`btn ${tone === 'nudge' ? 'btn--ghost' : 'btn--danger'}`}
+            onClick={onConfirm}
+          >
             {confirmLabel}
           </button>
         </div>

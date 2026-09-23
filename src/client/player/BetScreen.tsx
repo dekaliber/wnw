@@ -1,6 +1,8 @@
+import { useState, type CSSProperties } from 'react'
 import { ALL_TOO_HIGH, CHIPS_PER_PLAYER } from '../../shared/mat.ts'
 import { bankAvailable } from '../../shared/scoring.ts'
 import type { ClientView } from '../../shared/types.ts'
+import { Confirm } from '../Confirm.tsx'
 import { formatAnswer, playerById } from '../format.ts'
 import { questionText } from '../i18n/content.ts'
 import { useLocale } from '../i18n/LocaleProvider.tsx'
@@ -30,6 +32,16 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
   const myChipsOn = (slotIndex: number) => myBets.filter((b) => b.slotIndex === slotIndex)
   const freeChip = ([0, 1] as const).find((c) => !myBets.some((b) => b.chip === c))
   const bank = you ? bankAvailable(you, round.bets) : 0
+  const [confirmingLock, setConfirmingLock] = useState(false)
+
+  const lock = () => game.send({ t: 'lock' })
+
+  // A wager chip costs nothing to place — it comes back win or lose — so
+  // locking in with one unplaced is almost always an oversight. Ask once.
+  const requestLock = () => {
+    if (freeChip !== undefined) setConfirmingLock(true)
+    else lock()
+  }
 
   const place = (slotIndex: number) => {
     if (locked || freeChip === undefined) return
@@ -98,9 +110,6 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
 
           const mine = myChipsOn(slot.index)
           const slotWager = mine.reduce((sum, b) => sum + b.wager, 0)
-          const others = round.bets.filter(
-            (b) => b.slotIndex === slot.index && b.playerId !== view.youId,
-          ).length
           const authors = (slot.guess?.playerIds ?? [])
             .map((id) => playerById(view, id))
             .filter(Boolean)
@@ -150,6 +159,8 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
                   )}
                 </span>
 
+                {/* Only your own chips. Who else is on a slot is on the board
+                    for anyone who wants it; here it was just noise. */}
                 <span className="betrow__chips">
                   {mine.map((bet) => (
                     <span
@@ -158,7 +169,16 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
                       style={{ background: you?.color }}
                     />
                   ))}
-                  <span className="betrow__others">{others || ''}</span>
+                  {/* The raise as its own ghost chip, kept apart from the
+                      solid ones: those always come back, this can be lost. */}
+                  {slotWager > 0 && (
+                    <span
+                      className="chip chip--raise"
+                      style={{ '--who': you?.color } as CSSProperties}
+                    >
+                      +{slotWager}
+                    </span>
+                  )}
                 </span>
               </button>
 
@@ -219,7 +239,7 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
           <button
             className="btn btn--primary"
             disabled={myBets.length === 0}
-            onClick={() => game.send({ t: 'lock' })}
+            onClick={requestLock}
           >
             {t.lockIn}
           </button>
@@ -230,6 +250,21 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
             primary and "move on" sits beside it rather than replacing it. */}
         {view.hostId === view.youId && <HostAdvanceButton game={game} view={view} />}
       </footer>
+
+      {confirmingLock && (
+        <Confirm
+          tone="nudge"
+          title={t.unusedChipTitle}
+          body={t.unusedChipBody}
+          cancelLabel={t.unusedChipPlace}
+          confirmLabel={t.unusedChipLockAnyway}
+          onCancel={() => setConfirmingLock(false)}
+          onConfirm={() => {
+            setConfirmingLock(false)
+            lock()
+          }}
+        />
+      )}
     </main>
   )
 }

@@ -1,6 +1,6 @@
 import type { ClientView } from '../../shared/types.ts'
-import { formatAnswer, playerById, standings } from '../format.ts'
-import { localisedQuip, questionNote } from '../i18n/content.ts'
+import { formatAnswer, playerById, standings, tallyLength } from '../format.ts'
+import { localisedQuip, questionNote, questionText } from '../i18n/content.ts'
 import { useLocale } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 import { HostControls } from './HostControls.tsx'
@@ -13,15 +13,21 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
   const mine = result.deltas.find((d) => d.playerId === view.youId)
   const winningSlot = round.slots[result.winningSlotIndex]
   const last = round.number >= view.config.totalRounds
+  // The board walks through everyone's scoring one player at a time, and the
+  // host is the one who moves it on — the board itself is usually out of reach.
+  const tallyTotal = round.isTiebreak ? 0 : tallyLength(view)
+  const tallying = round.tallied < tallyTotal
 
   const quip = localisedQuip(result.quipId, locale)
   const note = questionNote(round.question, locale)
+  const question = <p className="reveal__question">{questionText(round.question, locale)}</p>
 
   if (round.isTiebreak) {
     const winner = view.winnerIds[0]
     return (
       <main className="screen screen--reveal">
         <HostControls view={view} />
+        {question}
         <p className="reveal__label">{t.suddenDeath}</p>
         <p className="reveal__answer">
           {formatAnswer(round.question.answer ?? 0, round.question.format)}
@@ -43,6 +49,7 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
   return (
     <main className="screen screen--reveal">
       <HostControls view={view} />
+      {question}
       <p className="reveal__label">{t.theAnswerIs}</p>
       <p className="reveal__answer">
         {formatAnswer(round.question.answer ?? 0, round.question.format)}
@@ -85,7 +92,17 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
         ))}
       </ol>
 
-      {isHost ? (
+      {isHost && tallying ? (
+        <button
+          className="btn btn--primary btn--fixed btn--tally"
+          onClick={() => game.send({ t: 'tally' })}
+        >
+          {round.tallied === tallyTotal - 1 ? t.tallyShowStandings : t.tallyNextPlayer} ▸
+          <span className="btn__count">
+            {round.tallied + 1}/{tallyTotal}
+          </span>
+        </button>
+      ) : isHost ? (
         <button className="btn btn--primary btn--fixed" onClick={() => game.send({ t: 'advance' })}>
           {last ? t.finalScores : t.nextQuestion(round.number + 1)}
         </button>

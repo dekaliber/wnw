@@ -121,6 +121,12 @@ export interface Round {
   result: RoundResult | null
   /** Sudden-death round to break a final tie; does not count toward the 7. */
   isTiebreak: boolean
+  /**
+   * How many players the host has moved past in the board's scoring
+   * playthrough. Held here rather than on the board so the host's phone can
+   * drive it — the board is a display, and often nobody can reach it.
+   */
+  tallied: number
 }
 
 export interface GameConfig {
@@ -179,6 +185,8 @@ export type ClientMessage =
   | { t: 'lock' }
   | { t: 'unlock' }
   | { t: 'advance' }
+  /** Host only, during the reveal: move the board's tally on to the next player. */
+  | { t: 'tally' }
   | { t: 'kick'; playerId: string }
   | { t: 'rematch' }
 

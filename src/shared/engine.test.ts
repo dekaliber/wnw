@@ -553,3 +553,49 @@ describe('what clients are allowed to see', () => {
     expect(viewFor(state, null, clock).youId).toBeNull()
   })
 })
+
+describe('the board tally', () => {
+  /** Two players at the reveal of question 1. */
+  function atReveal(): GameState {
+    return run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 90 }),
+      say('ben', { t: 'guess', value: 110 }),
+      say('ana', { t: 'advance' }),
+      say('ana', { t: 'advance' }),
+    ])
+  }
+
+  it('starts every reveal at the first player', () => {
+    const state = atReveal()
+    expect(state.phase).toBe('reveal')
+    expect(state.round!.tallied).toBe(0)
+  })
+
+  it('is moved on by the host, one player at a time, and stops at standings', () => {
+    const tap = say('ana', { t: 'tally' })
+    const state = run(atReveal(), [tap, tap, tap, tap])
+    // Two players: past the first, past the second (standings), then no further.
+    expect(state.round!.tallied).toBe(2)
+  })
+
+  it('belongs to the host alone', () => {
+    const result = reduce(atReveal(), say('ben', { t: 'tally' }), deps)
+    expect(result.error).toBeTruthy()
+    expect(result.state.round!.tallied).toBe(0)
+  })
+
+  it('does nothing outside the reveal', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'tally' }),
+    ])
+    expect(state.round!.tallied).toBe(0)
+  })
+
+  it('starts over for the next question', () => {
+    const state = run(atReveal(), [say('ana', { t: 'tally' }), say('ana', { t: 'advance' })])
+    expect(state.round!.number).toBe(2)
+    expect(state.round!.tallied).toBe(0)
+  })
+})

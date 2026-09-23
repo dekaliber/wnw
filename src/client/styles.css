@@ -170,6 +170,15 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
+/* The host stepping the board's tally on: which player out of how many. */
+.btn--tally {
+  gap: 8px;
+}
+
+.btn--tally .btn__count {
+  background: rgb(0 0 0 / 0.14);
+}
+
 .btn--host-advance.is-ready .btn__count {
   background: rgb(74 222 128 / 0.2);
 }
@@ -1006,6 +1015,12 @@ input {
   opacity: 0.4;
 }
 
+/* Rows go disabled once both chips are down or bets are locked, which would
+   otherwise dim the very rows you bet on. Those stay at full strength. */
+.betrow--mine:disabled {
+  opacity: 1;
+}
+
 .betrow__odds {
   flex: none;
   width: 46px;
@@ -1059,13 +1074,6 @@ input {
   flex: none;
 }
 
-.betrow__others {
-  color: rgb(255 255 255 / 0.55);
-  font-size: 0.85rem;
-  font-weight: 700;
-  min-width: 1ch;
-}
-
 .chip {
   display: grid;
   place-items: center;
@@ -1081,6 +1089,14 @@ input {
 
 .chip--own {
   box-shadow: 0 0 0 2px var(--accent);
+}
+
+.chip--raise {
+  --who: var(--accent);
+  background: rgb(255 255 255 / 0.12);
+  background: color-mix(in srgb, var(--who) 30%, transparent);
+  border: 2px dashed var(--who);
+  color: var(--text);
 }
 
 .wager {
@@ -1195,6 +1211,18 @@ input {
   margin: 6px 0 4px;
   font-size: clamp(1.1rem, 2.4vw, 2rem);
   max-width: 36ch;
+}
+
+/* The question again, so nobody has to look up at the TV to remember it. */
+.reveal__question {
+  margin: 12px 0 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.reveal__question + .reveal__label {
+  margin-top: 10px;
 }
 
 .reveal__note {
@@ -1325,11 +1353,40 @@ input {
   background: rgb(0 0 0 / 0.3);
 }
 
+/* Brighter and minty rather than the accent yellow, so it reads as "this
+   paid" at a glance — but well clear of the felt's own darker green. */
 .slot--winner {
-  border-color: var(--accent);
-  background: rgb(255 201 60 / 0.18);
+  position: relative;
+  border-color: var(--win);
+  background: rgb(74 222 128 / 0.3);
   transform: translateY(-4px);
-  box-shadow: 0 0 0 3px var(--accent), 0 14px 34px rgb(0 0 0 / 0.5);
+  box-shadow: 0 0 0 3px var(--win), 0 0 28px rgb(74 222 128 / 0.45), 0 14px 34px rgb(0 0 0 / 0.5);
+}
+
+.slot__winner-pill {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -55%);
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--win);
+  color: #06210f;
+  font-size: clamp(0.55rem, 0.9vw, 0.8rem);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.35);
+  animation: pill-in 0.4s cubic-bezier(0.2, 0.8, 0.3, 1.4) 0.2s backwards;
+}
+
+/* Its own keyframes: the shared `stamp` would drop the centring translate. */
+@keyframes pill-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -55%) scale(2);
+  }
 }
 
 .slot--dimmed {
@@ -1849,30 +1906,89 @@ input {
   max-width: 60ch;
 }
 
-.board__deltas {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px 18px;
+/* ---------- round summary (after "Show standings") ---------- */
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  align-items: start;
+  gap: 0 clamp(16px, 3vw, 48px);
+  width: min(100%, calc(var(--cols) * 460px));
+  padding: clamp(8px, 1.2vh, 14px) clamp(14px, 1.8vw, 24px);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
 }
 
-.board__deltas li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: clamp(0.9rem, 1.5vw, 1.25rem);
+.summary__col {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(0.85rem, 1.45vw, 1.25rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary__col th {
+  padding: 0 0 4px;
+  color: var(--text-dim);
+  font-size: 0.62em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: right;
+}
+
+.summary__col td {
+  padding: clamp(2px, 0.5vh, 6px) 0;
+  text-align: right;
   font-weight: 700;
 }
 
-.board__deltas .is-up strong {
+.summary__col th + th,
+.summary__col td + td {
+  width: 4.5ch;
+  padding-left: clamp(8px, 1.2vw, 18px);
+}
+
+.summary__col tbody tr {
+  border-top: 1px solid var(--line);
+  animation: tally-line-in 0.3s ease-out backwards;
+}
+
+.summary__col .summary__name {
+  max-width: 0; /* lets a long name ellipsize instead of widening the table */
+  text-align: left;
+}
+
+.summary__who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary__who span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.summary__before {
+  color: var(--text-dim);
+}
+
+.summary__change {
+  color: var(--text-dim);
+}
+
+.summary__change.is-up {
   color: var(--win);
 }
 
-.board__deltas .is-down strong {
+.summary__change.is-down {
   color: var(--lose);
+}
+
+.summary__after {
+  font-weight: 900;
 }
 
 .board__scores {
@@ -1897,6 +2013,356 @@ input {
 .board__score strong {
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+/* Transformed by the pop when a result lands; inline-block so it can scale
+   without nudging the names beside it. */
+.board__score-value {
+  display: inline-block;
+  transform-origin: center;
+}
+
+/* ---------- board scoring playthrough ---------- */
+
+/* The band above the mat. Its height is held steady for the whole reveal so
+   the mat does not jump as lines arrive and players change. */
+.board__tally {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 1500px);
+  min-height: clamp(96px, 13vh, 150px);
+}
+
+.tally {
+  --who: var(--accent);
+  display: flex;
+  align-items: stretch;
+  gap: clamp(10px, 1.4vw, 20px);
+  width: 100%;
+  padding: clamp(10px, 1.4vh, 16px) clamp(14px, 1.8vw, 24px);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--who);
+  text-align: left;
+  animation: tally-in 0.35s cubic-bezier(0.2, 0.8, 0.3, 1.2);
+}
+
+@keyframes tally-in {
+  from {
+    opacity: 0;
+    transform: translateX(40px) scale(0.97);
+  }
+}
+
+/* The name column on the left of the row. Fixed-ish width so cards do not
+   shift sideways from one player to the next. */
+.tally__who {
+  flex: 0 0 clamp(110px, 13vw, 220px);
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.tally__name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: clamp(1.1rem, 2vw, 1.7rem);
+  font-weight: 800;
+}
+
+.tally__name .dot {
+  flex: none;
+  width: 0.7em;
+  height: 0.7em;
+}
+
+.tally__name span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tally__hint {
+  color: var(--text-dim);
+  font-size: clamp(0.7rem, 1vw, 0.9rem);
+  animation: tally-line-in 0.3s ease-out;
+}
+
+.tally__lines {
+  flex: 1;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(8px, 1vw, 14px);
+}
+
+/* One card per bet, reading left to right like the terms of a sum. */
+.tally__line {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: clamp(8px, 1.1vh, 12px) clamp(10px, 1vw, 14px);
+  border-radius: 12px;
+  background: var(--bg-sunken);
+  font-size: clamp(0.8rem, 1.25vw, 1.1rem);
+  animation: tally-line-in 0.3s ease-out;
+  transition:
+    background 0.3s,
+    box-shadow 0.3s,
+    opacity 0.3s;
+}
+
+@keyframes tally-line-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+.tally__line--quiet {
+  justify-content: center;
+  color: var(--text-dim);
+  max-width: none;
+}
+
+.tally__on {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tally__chip {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.9em;
+  height: 1.9em;
+  padding: 0 5px;
+  border-radius: 999px;
+  border: 2px solid rgb(0 0 0 / 0.35);
+  color: #10121a;
+  font-size: 0.8em;
+  font-weight: 800;
+}
+
+.tally__chip--star {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.tally__math {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tally__result {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  font-size: 1.25em;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tally__suspense {
+  color: var(--text-dim);
+  animation: pulse 0.8s ease-in-out infinite;
+}
+
+.tally__mark {
+  animation: stamp 0.35s cubic-bezier(0.2, 0.8, 0.3, 1.4);
+}
+
+@keyframes stamp {
+  from {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+
+.tally__line.is-won {
+  background: rgb(74 222 128 / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(74 222 128 / 0.45);
+}
+
+.tally__line.is-won .tally__result {
+  color: var(--win);
+}
+
+.tally__line.is-lost {
+  opacity: 0.8;
+}
+
+.tally__line.is-lost .tally__result {
+  color: var(--lose);
+}
+
+.tally__total {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center;
+  gap: clamp(8px, 1vw, 14px);
+  padding-left: clamp(10px, 1.4vw, 20px);
+  border-left: 1px dashed var(--line);
+  font-size: clamp(1.1rem, 2.1vw, 1.8rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  animation: tally-line-in 0.3s ease-out;
+}
+
+.tally__net,
+.tally__balance {
+  display: flex;
+  align-items: center;
+  gap: clamp(6px, 0.8vw, 12px);
+}
+
+.tally__term {
+  font-size: 0.8em;
+}
+
+.tally__term.is-up {
+  color: var(--win);
+}
+
+.tally__term.is-down {
+  color: var(--lose);
+}
+
+.tally__balance {
+  font-size: 0.7em;
+}
+
+.tally__before,
+.tally__op {
+  color: var(--text-dim);
+}
+
+.tally__delta,
+.tally-fly {
+  display: grid;
+  place-items: center;
+  padding: 2px 12px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-sunken);
+  color: var(--text);
+}
+
+.tally__delta {
+  animation: stamp 0.4s cubic-bezier(0.2, 0.8, 0.3, 1.4);
+  transition: opacity 0.2s;
+}
+
+.tally__delta.is-up,
+.tally-fly.is-up {
+  background: var(--win);
+  color: #06210f;
+}
+
+.tally__delta.is-down,
+.tally-fly.is-down {
+  background: var(--lose);
+  color: #2a0808;
+}
+
+/* The flying copy is in the air; leave a ghost of where it came from. */
+.tally__delta.is-sent {
+  opacity: 0.25;
+}
+
+.tally-fly {
+  position: fixed;
+  z-index: 50;
+  margin: 0;
+  box-sizing: border-box;
+  font-size: clamp(1.1rem, 2.1vw, 1.8rem);
+  pointer-events: none;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+}
+
+.tally__after {
+  min-width: 6ch;
+}
+
+/* Spotlight the chips being settled on the mat. */
+.chip {
+  transition:
+    opacity 0.3s,
+    transform 0.3s,
+    box-shadow 0.3s;
+}
+
+.chip--faded {
+  opacity: 0.2;
+}
+
+.chip--focus {
+  transform: scale(1.25);
+  box-shadow: 0 0 0 3px var(--text);
+  animation: chip-ping 0.5s ease-out;
+}
+
+@keyframes chip-ping {
+  from {
+    box-shadow: 0 0 0 14px rgb(255 255 255 / 0);
+  }
+}
+
+/* A losing slot is dimmed after the reveal; lift it while its bet is being
+   read out, so the chip in question is not the faintest thing on the mat. */
+.slot--spotlit:not(.slot--winner) {
+  opacity: 0.9;
+  box-shadow: inset 0 0 0 3px rgb(255 255 255 / 0.55);
+}
+
+/* ---------- board header question (reveal) ---------- */
+
+.board__head {
+  gap: 24px;
+}
+
+.board__head-question {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 0;
+  text-align: right;
+}
+
+.board__head-q {
+  margin: 0;
+  max-width: 60ch;
+  font-size: clamp(0.95rem, 1.7vw, 1.4rem);
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.board__head-q--alt {
+  font-size: 0.8em;
+  color: var(--text-dim);
 }
 
 /* ---------- board game over ---------- */

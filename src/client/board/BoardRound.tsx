@@ -1,11 +1,14 @@
 import type { ClientView } from '../../shared/types.ts'
 import { Mat } from '../Mat.tsx'
-import { expectedActors, formatAnswer, playerById, standings } from '../format.ts'
+import { expectedActors, formatAnswer, standings } from '../format.ts'
 import { localisedQuip, questionNote, questionText } from '../i18n/content.ts'
 import type { Game } from '../net.ts'
 import { useCountdown } from '../useCountdown.ts'
 import { boardLocales, boardStrings, inEachLocale } from './useBoardLocales.ts'
 import { useTimerChime } from './useTimerChime.ts'
+import { ScoreStrip, type StripEntry } from './ScoreStrip.tsx'
+import { RoundSummary, ScoringTally, useScoringPlaythrough } from './ScoringPlaythrough.tsx'
+import { standingsBefore } from './scoringTimeline.ts'
 
 export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
   const round = view.round!
@@ -13,6 +16,19 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
   const revealed = view.phase === 'reveal'
 
   useTimerChime(seconds, `${view.phase}-${round.number}`)
+
+  // Scores arrive already settled; the playthrough holds the strip at the
+  // pre-round totals and releases each player's as their result lands.
+  const playthrough = useScoringPlaythrough(view)
+  const strip: StripEntry[] =
+    playthrough && !playthrough.reordered
+      ? standingsBefore(view.players, playthrough.scorings).map((player) => {
+          const s = playthrough.scorings.find((x) => x.playerId === player.id)
+          const settled = !s || playthrough.landed.has(player.id)
+          return { player, score: settled ? player.score : s.before }
+        })
+      : standings(view).map((player) => ({ player, score: player.score }))
+  const tallying = Boolean(playthrough && !playthrough.reordered)
 
   // Follows the room: one language when everyone agrees, both when they do not.
   const locales = boardLocales(view)
@@ -35,21 +51,38 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
           {round.isTiebreak ? t.suddenDeath : t.questionN(round.number)}
           {!round.isTiebreak && <em> {t.ofN(view.config.totalRounds)}</em>}
         </span>
-        {seconds !== null && (
-          <span className={`board__timer ${seconds <= 5 ? 'is-urgent' : ''}`}>{seconds}</span>
+        {revealed ? (
+          // Still there to refer back to, but the reveal needs the headline
+          // space for the scoring.
+          <div className="board__head-question">
+            {questions.map((text, i) => (
+              <h1
+                key={text}
+                className={`board__head-q ${i > 0 ? 'board__head-q--alt' : ''}`}
+              >
+                {text}
+              </h1>
+            ))}
+          </div>
+        ) : (
+          seconds !== null && (
+            <span className={`board__timer ${seconds <= 5 ? 'is-urgent' : ''}`}>{seconds}</span>
+          )
         )}
       </header>
 
       {/* Both languages stacked, the majority one first and full size. The
           second is quieter so the board reads as one question in two voices
           rather than two competing headlines. */}
-      <div className="board__question-group">
-        {questions.map((text, i) => (
-          <h1 key={text} className={`board__question ${i > 0 ? 'board__question--alt' : ''}`}>
-            {text}
-          </h1>
-        ))}
-      </div>
+      {!revealed && (
+        <div className="board__question-group">
+          {questions.map((text, i) => (
+            <h1 key={text} className={`board__question ${i > 0 ? 'board__question--alt' : ''}`}>
+              {text}
+            </h1>
+          ))}
+        </div>
+      )}
 
       {view.phase === 'question' ? (
         <section className="board__waiting">
@@ -76,6 +109,17 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
         </section>
       ) : (
         <>
+          {revealed && !round.isTiebreak && (
+            // Fixed-height band, so the mat does not jump as lines arrive.
+            <section className="board__tally">
+              {playthrough && tallying ? (
+                <ScoringTally view={view} frame={playthrough} t={t} />
+              ) : (
+                <RoundSummary view={view} t={t} />
+              )}
+            </section>
+          )}
+
           <Mat
             view={view}
             slots={round.slots}
@@ -85,6 +129,17 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
             // getting crowded without knowing who is piling on.
             anonymousChips={!revealed}
             allTooHighLabel={t.allAnswersTooHigh}
+            winnerLabel={t.slotWinner}
+            spotlight={
+              playthrough?.current
+                ? {
+                    playerId: playthrough.current.playerId,
+                    chips: playthrough.current.bets
+                      .slice(0, playthrough.betsShown)
+                      .flatMap((b) => b.chips),
+                  }
+                : null
+            }
           />
 
           {revealed ? (
@@ -107,24 +162,6 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
                   </p>
                 ) : null,
               )}
-              <ul className="board__deltas">
-                {round.result!.deltas
-                  .filter((d) => d.total !== 0)
-                  .sort((a, b) => b.total - a.total)
-                  .map((d) => {
-                    const p = playerById(view, d.playerId)
-                    return (
-                      <li key={d.playerId} className={d.total > 0 ? 'is-up' : 'is-down'}>
-                        <span className="dot" style={{ background: p?.color }} />
-                        {p?.name}
-                        <strong>
-                          {d.total > 0 ? '+' : ''}
-                          {d.total}
-                        </strong>
-                      </li>
-                    )
-                  })}
-              </ul>
             </section>
           ) : (
             <p className="board__counter board__counter--bet">
@@ -136,15 +173,7 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
         </>
       )}
 
-      <footer className="board__scores">
-        {standings(view).map((p) => (
-          <span key={p.id} className="board__score">
-            <span className="dot" style={{ background: p.color }} />
-            {p.name}
-            <strong>{p.score}</strong>
-          </span>
-        ))}
-      </footer>
+      <ScoreStrip entries={strip} />
     </main>
   )
 }

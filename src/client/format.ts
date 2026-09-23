@@ -35,6 +35,17 @@ export const slotLabel = (index: number): string =>
   index === 0 ? 'All Answers Too High' : `Pays ${2 + Math.abs(index - 4)} to 1`
 
 /**
+ * How many players the board's scoring tally steps through: everyone scored
+ * this round who is still in the room. Shared by the board, which plays it,
+ * and the host's phone, which moves it on — so they never disagree about
+ * which tap is the last.
+ */
+export function tallyLength(view: ClientView): number {
+  const deltas = view.round?.result?.deltas ?? []
+  return deltas.filter((d) => view.players.some((p) => p.id === d.playerId)).length
+}
+
+/**
  * Who the current round is waiting on: everyone connected, or — during sudden
  * death — only the tied leaders, since bystanders never guess in a tiebreak.
  */
