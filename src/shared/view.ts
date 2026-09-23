@@ -10,7 +10,7 @@
  */
 
 import { isPractice } from './customQuestions.ts'
-import { effectiveHostId } from './engine.ts'
+import { effectiveHostId, nonPlayerId } from './engine.ts'
 import type {
   ClientQuestion,
   ClientRound,
@@ -66,6 +66,7 @@ export function viewFor(
   return {
     ...rest,
     hostId: effectiveHostId(state),
+    nonPlayerId: nonPlayerId(state),
     round: clientRound,
     customQuestions: customSummary,
     restingCount,

@@ -79,6 +79,10 @@ const en = {
   practiceSetting: 'Practice question first',
   practiceHint:
     'A warm-up round for first-timers: guess, bet and tally as usual, then the points are handed back before question 1.',
+  hostOnlySetting: 'Host only — I’m not playing',
+  hostOnlyHint:
+    'You run the game from your phone but don’t guess, bet or score. Handy if you wrote the questions.',
+  notPlaying: 'Not playing',
   waitingForHost: 'Waiting for the host to start…',
   readyWhenYouAre: 'Ready when you are.',
   imReady: 'I’m ready',
@@ -102,6 +106,11 @@ const en = {
   inWaitingForRest: (acted: number, total: number) =>
     `${acted} of ${total} in — waiting for the rest…`,
   tiebreakBystander: 'The leaders are tied. They are settling it — closest without going over.',
+  hostOnlyRunning: 'You’re running this game — not playing.',
+  hostOnlyGuessing: 'Players are guessing',
+  hostOnlyBetting: 'Players are betting',
+  actedIn: 'In',
+  actedPending: 'Thinking…',
   moveToBetting: 'Move to betting',
   revealAnswer: 'Reveal answer',
 
@@ -298,6 +307,10 @@ const fr: typeof en = {
   practiceSetting: 'Question d’essai d’abord',
   practiceHint:
     'Un tour d’échauffement pour les débutants : on devine, on parie et on compte comme d’habitude, puis les points sont rendus avant la question 1.',
+  hostOnlySetting: 'Hôte seulement — je ne joue pas',
+  hostOnlyHint:
+    'Vous menez la partie depuis votre téléphone sans deviner, parier ni marquer de points. Pratique si vous avez écrit les questions.',
+  notPlaying: 'Ne joue pas',
   waitingForHost: 'En attente du lancement par l’hôte…',
   readyWhenYouAre: 'Quand vous voulez.',
   imReady: 'Je suis prêt',
@@ -322,6 +335,11 @@ const fr: typeof en = {
     `${acted} sur ${total} — en attente des autres…`,
   tiebreakBystander:
     'Les meneurs sont à égalité. Ils se départagent — le plus proche sans dépasser.',
+  hostOnlyRunning: 'Vous menez cette partie — vous ne jouez pas.',
+  hostOnlyGuessing: 'Les joueurs devinent',
+  hostOnlyBetting: 'Les joueurs parient',
+  actedIn: 'Fait',
+  actedPending: 'Réfléchit…',
   moveToBetting: 'Passer aux paris',
   revealAnswer: 'Révéler la réponse',
 

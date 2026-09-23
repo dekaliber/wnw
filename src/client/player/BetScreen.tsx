@@ -3,7 +3,7 @@ import { ALL_TOO_HIGH, CHIPS_PER_PLAYER } from '../../shared/mat.ts'
 import { bankAvailable } from '../../shared/scoring.ts'
 import type { ClientView } from '../../shared/types.ts'
 import { Confirm } from '../Confirm.tsx'
-import { formatAnswer, playerById } from '../format.ts'
+import { expectedActors, formatAnswer, playerById } from '../format.ts'
 import { questionText } from '../i18n/content.ts'
 import { useLocale } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
@@ -232,7 +232,7 @@ export function BetScreen({ game, view }: { game: Game; view: ClientView }) {
           <button className="btn btn--ghost" onClick={() => game.send({ t: 'unlock' })}>
             {t.lockedTapToChange(
               round.locked.length,
-              view.players.filter((p) => p.connected).length,
+              expectedActors(view).length,
             )}
           </button>
         ) : (

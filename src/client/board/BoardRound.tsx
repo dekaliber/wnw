@@ -1,6 +1,6 @@
 import type { ClientView } from '../../shared/types.ts'
 import { Mat } from '../Mat.tsx'
-import { expectedActors, formatAnswer, standings } from '../format.ts'
+import { contestants, expectedActors, formatAnswer, standings } from '../format.ts'
 import { localisedQuip, questionNote, questionText } from '../i18n/content.ts'
 import type { Game } from '../net.ts'
 import { useCountdown } from '../useCountdown.ts'
@@ -27,7 +27,7 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
   const playthrough = useScoringPlaythrough(view)
   const strip: StripEntry[] =
     playthrough && !playthrough.reordered
-      ? standingsBefore(view.players, playthrough.scorings).map((player) => {
+      ? standingsBefore(contestants(view), playthrough.scorings).map((player) => {
           const s = playthrough.scorings.find((x) => x.playerId === player.id)
           const settled = !s || playthrough.landed.has(player.id)
           return { player, score: settled ? player.score : s.before }

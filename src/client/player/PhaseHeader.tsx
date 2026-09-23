@@ -15,7 +15,9 @@ export function PhaseHeader({
   subtitle?: string
 }) {
   const t = useT()
-  const you = view.youId ? playerById(view, view.youId) : undefined
+  // A host who is only running the game has no chips to show.
+  const you =
+    view.youId && view.youId !== view.nonPlayerId ? playerById(view, view.youId) : undefined
   // Decided here rather than by each screen, so no phase of the practice
   // round can forget to say it does not count.
   const practice = Boolean(view.round?.isPractice)

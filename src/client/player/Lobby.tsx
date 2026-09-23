@@ -13,7 +13,8 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
   const [showRules, setShowRules] = useState(false)
 
   const isHost = view.hostId === view.youId
-  const seated = view.players.filter((p) => p.connected)
+  // A host-only host is at the table but not in the game, so not in the count.
+  const seated = view.players.filter((p) => p.connected && p.id !== view.nonPlayerId)
   const enoughPlayers = seated.length >= MIN_PLAYERS
   const allReady = everyoneReady(view.players, view.hostId)
   const youAreReady = view.players.find((p) => p.id === view.youId)?.ready ?? false
@@ -57,6 +58,8 @@ export function Lobby({ game, view }: { game: Game; view: ClientView }) {
               {p.id === view.youId && <span className="tag tag--you">{t.you}</span>}
               {!p.connected ? (
                 <span className="tag tag--away">{t.away}</span>
+              ) : p.id === view.nonPlayerId ? (
+                <span className="tag tag--away">{t.notPlaying}</span>
               ) : p.id === view.hostId ? null : p.ready ? (
                 <span className="tag tag--ready">{t.ready}</span>
               ) : (
@@ -114,6 +117,16 @@ function HostSettings({ game, view }: { game: Game; view: ClientView }) {
   return (
     <section className="panel">
       <h2 className="panel__title">{t.settings}</h2>
+
+      <label className="setting setting--toggle">
+        <span>{t.hostOnlySetting}</span>
+        <input
+          type="checkbox"
+          checked={config.hostOnly}
+          onChange={(e) => game.send({ t: 'config', config: { hostOnly: e.target.checked } })}
+        />
+      </label>
+      <p className="hint hint--tight">{t.hostOnlyHint}</p>
 
       <div className="setting">
         <span>{t.questionsSetting}</span>

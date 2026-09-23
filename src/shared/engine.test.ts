@@ -796,3 +796,59 @@ describe('opening the scoring', () => {
     expect(next.round!.scoring).toBe(false)
   })
 })
+
+describe('host-only mode', () => {
+  const hostOnly = (names: string[]) =>
+    run(lobbyWith(names), [say(names[0]!, { t: 'config', config: { hostOnly: true } })])
+
+  it('does not count the host towards the minimum', () => {
+    const state = hostOnly(['ana', 'ben'])
+    expect(reduce(state, say('ana', { t: 'start' }), deps).error).toMatch(/at least/)
+    expect(reduce(hostOnly(['ana', 'ben', 'cy']), say('ana', { t: 'start' }), deps).error)
+      .toBeUndefined()
+  })
+
+  it('keeps the host out of guessing and betting, but lets them drive', () => {
+    const started = run(hostOnly(['ana', 'ben', 'cy']), [say('ana', { t: 'start' })])
+    expect(reduce(started, say('ana', { t: 'guess', value: 5 }), deps).error).toMatch(/not playing/)
+
+    const betting = run(started, [
+      say('ben', { t: 'guess', value: 100 }),
+      say('cy', { t: 'guess', value: 200 }),
+      say('ana', { t: 'advance' }),
+    ])
+    expect(betting.phase).toBe('betting')
+    const slot = betting.round!.slots.find((s) => s.guess)!.index
+    expect(reduce(betting, say('ana', { t: 'bet', chip: 0, slotIndex: slot, wager: 0 }), deps).error)
+      .toMatch(/not playing/)
+
+    const revealed = run(betting, [say('ana', { t: 'advance' })])
+    expect(revealed.phase).toBe('reveal')
+    expect(revealed.round!.result!.deltas.map((d) => d.playerId)).toEqual(['ben', 'cy'])
+  })
+
+  it('never makes the host a winner or a tiebreak contender', () => {
+    // Nobody scores, so the two players tie at zero; the host, also on zero,
+    // must stay out of the sudden death.
+    let state = run(
+      hostOnly(['ana', 'ben', 'cy']),
+      [say('ana', { t: 'config', config: { totalRounds: 1 } }), say('ana', { t: 'start' })],
+    )
+    state = run(state, [say('ana', { t: 'advance' }), say('ana', { t: 'advance' }), say('ana', { t: 'advance' })])
+    expect(state.round!.isTiebreak).toBe(true)
+    expect([...state.winnerIds].sort()).toEqual(['ben', 'cy'])
+  })
+
+  it('tells clients who is sitting out, even while someone else is driving', () => {
+    const state = run(hostOnly(['ana', 'ben', 'cy']), [{ type: 'disconnect', playerId: 'ana' }])
+    const view = viewFor(state, 'ben', 0)
+    expect(view.hostId).toBe('ben')
+    expect(view.nonPlayerId).toBe('ana')
+  })
+
+  it('switches off when the host leaves, so the new host is not benched', () => {
+    const state = run(hostOnly(['ana', 'ben', 'cy']), [say('ana', { t: 'leave' })])
+    expect(state.hostId).toBe('ben')
+    expect(state.config.hostOnly).toBe(false)
+  })
+})

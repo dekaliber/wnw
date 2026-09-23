@@ -16,8 +16,12 @@ export function formatAnswer(value: number, format: AnswerFormat = 'plain'): str
 export const playerById = (view: ClientView, id: string): Player | undefined =>
   view.players.find((p) => p.id === id)
 
+/** Everyone playing — the table, less a host who is only running the game. */
+export const contestants = (view: ClientView): Player[] =>
+  view.players.filter((p) => p.id !== view.nonPlayerId)
+
 export const standings = (view: ClientView): Player[] =>
-  [...view.players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+  contestants(view).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
 
 /**
  * Seconds left on the current phase.
@@ -50,7 +54,7 @@ export function tallyLength(view: ClientView): number {
  * death — only the tied leaders, since bystanders never guess in a tiebreak.
  */
 export function expectedActors(view: ClientView): Player[] {
-  const active = view.players.filter((p) => p.connected)
+  const active = contestants(view).filter((p) => p.connected)
   if (view.round?.isTiebreak) return active.filter((p) => view.winnerIds.includes(p.id))
   return active
 }

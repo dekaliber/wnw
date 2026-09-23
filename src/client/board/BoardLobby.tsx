@@ -52,7 +52,11 @@ export function BoardLobby({ view }: { view: ClientView }) {
                 {p.name.slice(0, 1).toUpperCase()}
               </span>
               <span>{p.name}</span>
-              {p.id === view.hostId ? (
+              {p.id === view.nonPlayerId ? (
+                <span className="board__hosttag">
+                  {t.host} · {t.notPlaying}
+                </span>
+              ) : p.id === view.hostId ? (
                 <span className="board__hosttag">{t.host}</span>
               ) : p.ready ? (
                 <span className="board__hosttag board__hosttag--ready">{t.ready}</span>

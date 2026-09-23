@@ -9,6 +9,7 @@ import { GuessScreen } from './GuessScreen.tsx'
 import { BetScreen } from './BetScreen.tsx'
 import { RevealScreen } from './RevealScreen.tsx'
 import { GameOverScreen } from './GameOverScreen.tsx'
+import { HostOnlyRound } from './HostOnlyRound.tsx'
 import { RestartProvider } from './RestartProvider.tsx'
 
 /**
@@ -93,13 +94,15 @@ export function PlayerApp({ game }: { game: Game }) {
 }
 
 function Screen({ game, view }: { game: Game; view: NonNullable<Game['view']> }) {
+  // A host who is only running the game has nothing to guess or bet with.
+  const sittingOut = view.youId !== null && view.youId === view.nonPlayerId
   switch (view.phase) {
     case 'lobby':
       return <Lobby game={game} view={view} />
     case 'question':
-      return <GuessScreen game={game} view={view} />
+      return sittingOut ? <HostOnlyRound game={game} view={view} /> : <GuessScreen game={game} view={view} />
     case 'betting':
-      return <BetScreen game={game} view={view} />
+      return sittingOut ? <HostOnlyRound game={game} view={view} /> : <BetScreen game={game} view={view} />
     case 'reveal':
       return <RevealScreen game={game} view={view} />
     case 'gameover':

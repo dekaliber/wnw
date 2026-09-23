@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ALL_TOO_HIGH } from '../../shared/mat.ts'
 import type { ClientView, Slot } from '../../shared/types.ts'
-import { formatAnswer, playerById } from '../format.ts'
+import { contestants, formatAnswer, playerById } from '../format.ts'
 import type { Strings } from '../i18n/strings.ts'
 import { prefersReducedMotion, RollingNumber, signed } from './motion.tsx'
 import {
@@ -344,7 +344,7 @@ function describeSlot(view: ClientView, slot: Slot | undefined, t: Strings): str
  */
 export function RoundSummary({ view, t }: { view: ClientView; t: Strings }) {
   const deltas = view.round?.result?.deltas ?? []
-  const rows = [...view.players]
+  const rows = contestants(view)
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
     .map((player) => {
       const change = deltas.find((d) => d.playerId === player.id)?.total ?? 0

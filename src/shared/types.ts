@@ -162,6 +162,12 @@ export interface GameConfig {
    * The built-in bank is always shuffled.
    */
   shuffleQuestions: boolean
+  /**
+   * The host runs the game without playing it: no guess, no chips, no score.
+   * For a quizmaster who knows the answers, or just wants to keep the room
+   * moving. They still drive every phase from their phone.
+   */
+  hostOnly: boolean
 }
 
 export const DEFAULT_CONFIG: GameConfig = {
@@ -172,6 +178,7 @@ export const DEFAULT_CONFIG: GameConfig = {
   excludeImperial: false,
   practiceRound: false,
   shuffleQuestions: false,
+  hostOnly: false,
 }
 
 /** A host's uploaded question set, replacing the built-in bank for this room. */
@@ -272,6 +279,12 @@ export interface ClientView extends Omit<GameState, 'round' | 'customQuestions'>
    * last 24h — only counted in the lobby, where the host can bring them back.
    */
   restingCount: number
+  /**
+   * The host, when they are running the game without playing it. Sent
+   * separately because `hostId` names whoever can drive right now, which
+   * falls to a player while the host's phone is away.
+   */
+  nonPlayerId: string | null
   /** Who this socket is. null for the TV board. */
   youId: string | null
   /** Server clock at send time, so clients can correct for drift. */

@@ -171,6 +171,17 @@ export function activePlayers(state: GameState): Player[] {
   return state.players.filter((p) => p.connected)
 }
 
+/** The host, when host-only mode keeps them out of the game; otherwise null. */
+export function nonPlayerId(state: Pick<GameState, 'config' | 'hostId'>): string | null {
+  return state.config.hostOnly ? state.hostId : null
+}
+
+/** Everyone who guesses, bets and scores — the whole table, less a host-only host. */
+export function contestants(state: GameState): Player[] {
+  const out = nonPlayerId(state)
+  return state.players.filter((p) => p.id !== out)
+}
+
 /**
  * Who may drive the game right now.
  *
@@ -294,7 +305,11 @@ function handleMessage(
         state.hostId === playerId
           ? (players.find((p) => p.connected)?.id ?? players[0]?.id ?? null)
           : state.hostId
-      return { state: { ...state, players, hostId } }
+      // Sitting out was the old host's choice; whoever inherits the room
+      // should not find themselves benched by it.
+      const config =
+        hostId !== state.hostId ? { ...state.config, hostOnly: false } : state.config
+      return { state: { ...state, players, hostId, config } }
     }
 
     case 'kick': {
@@ -325,7 +340,7 @@ function handleMessage(
     case 'start': {
       if (!isHost) return { state, error: 'Only the host can start the game.' }
       if (state.phase !== 'lobby') return { state, error: 'The game is already running.' }
-      if (activePlayers(state).length < MIN_PLAYERS) {
+      if (contestants(state).filter((p) => p.connected).length < MIN_PLAYERS) {
         return { state, error: `Need at least ${MIN_PLAYERS} players.` }
       }
       if (!everyoneReady(state.players, effectiveHostId(state))) {
@@ -343,6 +358,7 @@ function handleMessage(
       if (state.phase !== 'question' || !state.round) {
         return { state, error: 'Not accepting guesses right now.' }
       }
+      if (playerId === nonPlayerId(state)) return { state, error: 'The host is not playing this game.' }
       if (!Number.isFinite(msg.value)) return { state, error: 'That is not a number.' }
       if (state.round.isTiebreak && !state.winnerIds.includes(playerId)) {
         return { state, error: 'Only the tied players guess in a tiebreak.' }
@@ -365,6 +381,7 @@ function handleMessage(
       if (state.round.locked.includes(playerId)) {
         return { state, error: 'Your bets are locked in.' }
       }
+      if (playerId === nonPlayerId(state)) return { state, error: 'The host is not playing this game.' }
       const player = state.players.find((p) => p.id === playerId)
       if (!player) return { state, error: 'Unknown player.' }
       if (!isBettable(state.round.slots, msg.slotIndex)) {
@@ -396,6 +413,7 @@ function handleMessage(
 
     case 'lock': {
       if (state.phase !== 'betting' || !state.round) return { state }
+      if (playerId === nonPlayerId(state)) return { state }
       const placed = state.round.bets.filter((b) => b.playerId === playerId).length
       if (placed === 0) return { state, error: 'Place at least one chip first.' }
       if (state.round.locked.includes(playerId)) return { state }
@@ -464,6 +482,7 @@ function sanitizeConfig(config: GameConfig, custom: GameState['customQuestions']
     excludeImperial: Boolean(config.excludeImperial),
     practiceRound: Boolean(config.practiceRound),
     shuffleQuestions: Boolean(config.shuffleQuestions),
+    hostOnly: Boolean(config.hostOnly),
   }
 }
 
@@ -555,7 +574,9 @@ function revealAnswer(state: GameState): GameState {
   if (!state.round) return state
   const { slots, bets, question, number } = state.round
   const winner = winningSlotIndex(slots, question.answer)
-  const deltas = scoreRound(state.players, slots, bets, winner)
+  // A host-only host gets no row at all, rather than a row of zeros: the
+  // board would otherwise step through them in the tally.
+  const deltas = scoreRound(contestants(state), slots, bets, winner)
 
   // Nobody guessed at all, so there is no near-miss to comment on.
   const anyGuesses = slots.some((s) => s.guess)
@@ -604,7 +625,7 @@ function afterReveal(state: GameState, deps: EngineDeps): GameState {
   }
 
   if (state.round.number >= state.config.totalRounds) {
-    const tied = leaders(state.players)
+    const tied = leaders(contestants(state))
     if (tied.length > 1) {
       return beginRound({ ...state, winnerIds: tied }, state.round.number + 1, 'tiebreak', deps)
     }
