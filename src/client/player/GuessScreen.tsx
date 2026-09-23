@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { ClientView } from '../../shared/types.ts'
-import { expectedActors } from '../format.ts'
+import { expectedActors, formatAnswer } from '../format.ts'
 import { questionText } from '../i18n/content.ts'
 import { useLocale } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
@@ -74,7 +74,9 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
         <>
           <section className="locked-in">
             <p className="locked-in__label">{t.yourGuess}</p>
-            <p className="locked-in__value">{round.yourGuess?.toLocaleString()}</p>
+            <p className="locked-in__value">
+              {round.yourGuess !== null && formatAnswer(round.yourGuess, round.question.format)}
+            </p>
             <p className="waiting">
               {t.inWaitingForRest(round.submitted.length, expectedActors(view).length)}
             </p>
@@ -119,7 +121,9 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
               disabled={!valid}
               onClick={() => game.send({ t: 'guess', value })}
             >
-              {valid ? t.lockInValue(value.toLocaleString()) : t.lockIn}
+              {/* Through formatAnswer, like everywhere else a number is shown:
+                  a year must read 1989, not 1,989. */}
+              {valid ? t.lockInValue(formatAnswer(value, round.question.format)) : t.lockIn}
             </button>
           </div>
         </>
