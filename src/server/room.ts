@@ -88,12 +88,15 @@ export class Room {
       this.send(connectionId, { t: 'error', message: 'The board cannot play — join on a phone.' })
       return
     }
+    const before = this.state
     const { error } = this.apply({ type: 'message', playerId: connection.playerId, message })
     if (error) this.send(connectionId, { t: 'error', message: error })
     // The engine has checked it is the host, in the lobby; the 24h rest lives
     // on disk, out of the engine's reach, so it is cleared here.
     else if (message.t === 'resetPlayed') clearResting()
-    this.broadcast()
+    // A message that changed nothing tells nobody anything. Skipping it also
+    // keeps a client that repeats itself from making every screen re-render.
+    if (this.state !== before) this.broadcast()
   }
 
   isExpired(now: number): boolean {

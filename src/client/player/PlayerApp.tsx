@@ -47,20 +47,29 @@ export function PlayerApp({ game }: { game: Game }) {
   // Once per mount. A failed rejoin (the room is gone) must land on the join
   // form and stay there rather than retrying into a room that will not answer.
   const rejoined = useRef(false)
+  const { connect } = game
   useEffect(() => {
     if (rejoined.current) return
     rejoined.current = true
     const target = rejoinTarget(location.search, rememberedRoom(), rememberedName())
-    if (target) game.connect({ kind: 'join', ...target })
-  }, [game])
+    if (target) connect({ kind: 'join', ...target })
+  }, [connect])
 
   // Tell the server what this player is reading, so the board can notice a
   // mixed-language table on its own. Re-sent whenever the language changes or
   // the connection comes back, since a reconnect gets a fresh player record.
+  //
+  // Keyed on `send`, never on `game`: `useGame` hands back a new object on
+  // every render, so an effect keyed on it re-runs on every state message —
+  // and this one answers each state with a message that makes the server
+  // broadcast another. That loop ran at ~2,000 messages a second from a
+  // single idle phone, and was what made taps take seconds to land.
+  const { send } = game
   const joined = Boolean(view)
+  const online = game.status === 'open'
   useEffect(() => {
-    if (joined) game.send({ t: 'locale', locale })
-  }, [game, joined, locale])
+    if (joined && online) send({ t: 'locale', locale })
+  }, [send, joined, online, locale])
 
   // Rendered once here rather than inside each screen: that is what makes the
   // toggle genuinely available on every page, including the join form. The

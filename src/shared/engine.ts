@@ -307,6 +307,9 @@ function handleMessage(
       // language mid-round must not be blocked, and the board watches this to
       // decide whether the table is mixed.
       const next: Locale = msg.locale === 'fr' ? 'fr' : 'en'
+      // Unchanged means the very same state, so the room can tell there is
+      // nothing worth broadcasting.
+      if (state.players.find((p) => p.id === playerId)?.locale === next) return { state }
       const players = state.players.map((p) => (p.id === playerId ? { ...p, locale: next } : p))
       return { state: { ...state, players } }
     }

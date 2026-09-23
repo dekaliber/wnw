@@ -694,6 +694,14 @@ describe('bringing back played questions', () => {
   })
 })
 
+describe('no-op messages', () => {
+  it('returns the very same state for a language the player already has', () => {
+    const lobby = lobbyWith(['ana', 'ben'])
+    expect(reduce(lobby, say('ben', { t: 'locale', locale: 'en' }), deps).state).toBe(lobby)
+    expect(reduce(lobby, say('ben', { t: 'locale', locale: 'fr' }), deps).state).not.toBe(lobby)
+  })
+})
+
 describe('leaving the lobby', () => {
   it('frees the seat, and hands the host role on if the host goes', () => {
     const lobby = lobbyWith(['ana', 'ben', 'cy'])
