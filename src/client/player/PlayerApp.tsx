@@ -63,10 +63,13 @@ export function PlayerApp({ game }: { game: Game }) {
   }, [game, joined, locale])
 
   // Rendered once here rather than inside each screen: that is what makes the
-  // toggle genuinely available on every page, including the join form.
+  // toggle genuinely available on every page, including the join form. The
+  // one exception is the host's setup screen, where it lives under
+  // "Additional options" to keep that screen short.
+  const hostSetup = view?.phase === 'lobby' && view.hostId === view.youId
   return (
     <>
-      <LocaleToggle />
+      {!hostSetup && <LocaleToggle />}
       {view ? (
         <RestartProvider game={game} view={view}>
           <Screen game={game} view={view} />

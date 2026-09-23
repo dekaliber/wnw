@@ -12,7 +12,7 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
   const isHost = view.hostId === view.youId
   const mine = result.deltas.find((d) => d.playerId === view.youId)
   const winningSlot = round.slots[result.winningSlotIndex]
-  const last = round.number >= view.config.totalRounds
+  const last = !round.isPractice && round.number >= view.config.totalRounds
   // The board walks through everyone's scoring one player at a time, and the
   // host is the one who moves it on — the board itself is usually out of reach.
   const tallyTotal = round.isTiebreak ? 0 : tallyLength(view)
@@ -49,6 +49,12 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
   return (
     <main className="screen screen--reveal">
       <HostControls view={view} />
+      {round.isPractice && (
+        <p className="practice-head">
+          <span className="practice-badge">{t.practiceQuestion}</span>
+          <span className="practice-head__aside">{t.practiceNoScore}</span>
+        </p>
+      )}
       {question}
       <p className="reveal__label">{t.theAnswerIs}</p>
       <p className="reveal__answer">
@@ -104,7 +110,11 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
         </button>
       ) : isHost ? (
         <button className="btn btn--primary btn--fixed" onClick={() => game.send({ t: 'advance' })}>
-          {last ? t.finalScores : t.nextQuestion(round.number + 1)}
+          {round.isPractice
+            ? t.startForReal
+            : last
+              ? t.finalScores
+              : t.nextQuestion(round.number + 1)}
         </button>
       ) : (
         <p className="waiting">{t.waitingForHostShort}</p>

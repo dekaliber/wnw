@@ -63,7 +63,9 @@ export function GuessScreen({ game, view }: { game: Game; view: ClientView }) {
         view={view}
         seconds={seconds}
         title={round.isTiebreak ? t.suddenDeath : t.questionN(round.number)}
-        subtitle={round.isTiebreak ? undefined : t.ofN(view.config.totalRounds)}
+        subtitle={
+          round.isTiebreak || round.isPractice ? undefined : t.ofN(view.config.totalRounds)
+        }
       />
 
       <p className="question">{questionText(round.question, locale)}</p>

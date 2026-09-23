@@ -113,7 +113,28 @@ input {
   bottom: calc(12px + var(--safe-b));
   width: 100%;
   margin-top: auto;
-  box-shadow: 0 10px 30px rgb(0 0 0 / 0.55);
+  /* The second shadow is a solid band of page background around the button,
+     reaching down to the screen edge, so a long form scrolling underneath is
+     hidden rather than showing through the gap. */
+  box-shadow:
+    0 10px 30px rgb(0 0 0 / 0.55),
+    0 0 0 calc(12px + var(--safe-b)) var(--bg);
+}
+
+/* Dimmed with colour rather than opacity: a see-through button lets whatever
+   is scrolling beneath it show through. Mixed to match the old 35% look. */
+.btn--fixed:disabled {
+  opacity: 1;
+}
+
+.btn--fixed.btn--primary:disabled {
+  background: color-mix(in srgb, var(--accent) 35%, var(--bg));
+  color: color-mix(in srgb, var(--accent-ink) 55%, var(--bg));
+}
+
+.btn--fixed.btn--ghost:disabled {
+  background: var(--bg-raised);
+  color: var(--text-dim);
 }
 
 /* A sticky footer that can hold more than one button — the host's "move on"
@@ -453,6 +474,14 @@ input {
   gap: 10px;
 }
 
+.link-button.room-head__exit {
+  justify-self: center;
+  align-self: center;
+  margin-top: -8px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+
 .room-head__label {
   color: var(--text-dim);
   font-size: 0.85rem;
@@ -553,7 +582,11 @@ input {
   font-size: 0.95rem;
 }
 
-.setting:first-of-type {
+/* Only the row straight under a heading goes without a divider. Keyed off the
+   heading rather than `:first-of-type`, which also matched the first
+   checkbox row, since those are labels rather than divs. */
+.panel__title + .setting,
+.modal__title + .setting {
   border-top: 0;
 }
 
@@ -585,6 +618,170 @@ input {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---------- custom questions ---------- */
+
+.custom-questions {
+  display: grid;
+  gap: 6px;
+  padding: 0 0 10px;
+}
+
+.link-button {
+  justify-self: start;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.custom-questions__loaded {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.custom-questions__count {
+  color: var(--win);
+  font-weight: 700;
+}
+
+.custom-questions__file {
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+.custom-questions__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.custom-questions__problems {
+  border: 1px solid rgb(248 113 113 / 0.4);
+  background: rgb(248 113 113 / 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.custom-questions__problems p {
+  margin: 0;
+  font-weight: 700;
+  color: var(--lose);
+}
+
+.custom-questions__problems ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}
+
+.custom-questions__problems ul + p {
+  margin-top: 4px;
+  font-weight: 400;
+  color: var(--text-dim);
+}
+
+.custom-questions__skipped {
+  border: 1px solid rgb(255 201 60 / 0.35);
+  background: rgb(255 201 60 / 0.07);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.custom-questions__skipped summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.custom-questions__skipped ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.custom-questions__skipped p {
+  margin: 4px 0 0;
+  color: var(--text-dim);
+}
+
+.resting {
+  display: grid;
+  gap: 6px;
+}
+
+.resting__done {
+  color: var(--win);
+}
+
+/* A hint sits tight under its own row, but needs air before the next row's
+   divider, or the text reads as if it runs into the line. */
+.hint--tight + .setting,
+.hint--tight + .resting {
+  margin-top: 10px;
+}
+
+/* ---------- additional options ---------- */
+
+.more-options {
+  display: block;
+  margin: 14px auto 0;
+}
+
+.more-options__card {
+  max-height: calc(100dvh - 40px);
+  overflow-y: auto;
+}
+
+.more-options__done {
+  width: 100%;
+  margin-top: 18px;
+}
+
+.locale-toggle--inline {
+  position: static;
+}
+
+/* ---------- practice badge ---------- */
+
+.practice-badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: rgb(96 165 250 / 0.18);
+  color: #93c5fd;
+  border: 1px solid rgb(96 165 250 / 0.45);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  vertical-align: middle;
+}
+
+.practice-badge--board {
+  font-size: clamp(0.8rem, 1.4vw, 1.1rem);
+  padding: 0.3em 0.9em;
+}
+
+.practice-head {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.practice-head__aside {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
 /* ---------- rules link ---------- */
 
 .rules-link {
@@ -610,6 +807,22 @@ input {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: -6px;
+}
+
+.hostbar__id {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hostbar__room {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+.hostbar__room strong {
+  color: var(--text);
+  letter-spacing: 0.12em;
 }
 
 .hostbar__badge {
@@ -1703,6 +1916,25 @@ input {
 
 .board__empty {
   color: var(--text-dim);
+}
+
+.board__roomtag {
+  position: fixed;
+  left: 16px;
+  bottom: 14px;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: clamp(0.7rem, 1.1vw, 0.9rem);
+  z-index: 40;
+}
+
+.board__roomtag strong {
+  color: var(--accent);
+  letter-spacing: 0.15em;
 }
 
 .board__soundoff {

@@ -200,3 +200,40 @@ describe('rotation end to end', () => {
     expect(pickQuestion(bank, { roomUsedIds: [], retiredIds: ledger.retired() })).toBeDefined()
   })
 })
+
+describe('sequential picking', () => {
+  const ordered: Question[] = ['a', 'b', 'c', 'd'].map((id, i) => ({ id, text: id, answer: i }))
+
+  it('takes the first question in file order the room has not played', () => {
+    const picked = pickQuestion(ordered, { roomUsedIds: ['a'], retiredIds: new Set(), sequential: true })
+    expect(picked.id).toBe('b')
+  })
+
+  it('skips anything played elsewhere in the last 24h', () => {
+    const picked = pickQuestion(ordered, {
+      roomUsedIds: ['a'],
+      retiredIds: new Set(['b', 'c']),
+      sequential: true,
+    })
+    expect(picked.id).toBe('d')
+  })
+
+  it('falls back to file order when everything is resting', () => {
+    const picked = pickQuestion(ordered, {
+      roomUsedIds: [],
+      retiredIds: new Set(['a', 'b', 'c', 'd']),
+      sequential: true,
+    })
+    expect(picked.id).toBe('a')
+  })
+})
+
+describe('clearing the ledger', () => {
+  it('brings every resting question back at once', () => {
+    const ledger = new QuestionLedger(memoryStore(), () => 1_000)
+    ledger.retire('a')
+    ledger.retire('b')
+    ledger.clear()
+    expect(ledger.retired().size).toBe(0)
+  })
+})

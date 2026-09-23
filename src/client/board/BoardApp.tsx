@@ -57,6 +57,14 @@ export function BoardApp({ game }: { game: Game }) {
         <BoardRound game={game} view={view} />
       )}
 
+      {/* Kept in a corner through the game, for reconnecting a phone or
+          reopening this board. The lobby already shows it large. */}
+      {view.phase !== 'lobby' && (
+        <p className="board__roomtag">
+          {boardStrings(view).room} <strong>{view.roomCode}</strong>
+        </p>
+      )}
+
       {/* A board opened straight from a ?room= link has never seen a gesture,
           so the browser keeps audio suspended. Ask for the one click rather
           than letting the ten-second warning silently never fire. */}

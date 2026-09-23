@@ -10,11 +10,15 @@ import { useLocale } from './LocaleProvider.tsx'
  * a French speaker who has landed in English can find it without reading
  * English.
  */
-export function LocaleToggle() {
+export function LocaleToggle({ inline = false }: { inline?: boolean }) {
   const { locale, setLocale } = useLocale()
 
   return (
-    <div className="locale-toggle" role="group" aria-label="Language / Langue">
+    <div
+      className={`locale-toggle ${inline ? 'locale-toggle--inline' : ''}`}
+      role="group"
+      aria-label="Language / Langue"
+    >
       {LOCALES.map((code) => (
         <button
           key={code}

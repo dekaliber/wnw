@@ -5,6 +5,7 @@ import {
   everyoneReady,
   reduce,
   type Action,
+  type DrawOptions,
   type EngineDeps,
 } from './engine.ts'
 import { viewFor } from './view.ts'
@@ -203,13 +204,13 @@ describe('the question phase', () => {
   })
 
   it('sets a deadline only when timers are on', () => {
-    const timed = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
-    expect(timed.phaseEndsAt).toBe(clock + 45_000)
-
-    const untimed = run(lobbyWith(['ana', 'ben']), [
-      say('ana', { t: 'config', config: { timersEnabled: false } }),
+    const timed = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'config', config: { timersEnabled: true } }),
       say('ana', { t: 'start' }),
     ])
+    expect(timed.phaseEndsAt).toBe(clock + 45_000)
+
+    const untimed = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
     expect(untimed.phaseEndsAt).toBeNull()
   })
 })
@@ -551,6 +552,162 @@ describe('what clients are allowed to see', () => {
   it('gives the TV board a view with no player identity', () => {
     const state = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
     expect(viewFor(state, null, clock).youId).toBeNull()
+  })
+})
+
+describe('practice question', () => {
+  const practising = () =>
+    run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'config', config: { practiceRound: true } }),
+      say('ana', { t: 'start' }),
+    ])
+
+  it('opens with a practice round before question 1', () => {
+    const state = practising()
+    expect(state.round).toMatchObject({ number: 0, isPractice: true, isTiebreak: false })
+  })
+
+  it('plays out in full, then hands the points back before question 1', () => {
+    let state = practising()
+    const answer = state.round!.question.answer
+    state = run(state, [
+      say('ana', { t: 'guess', value: answer }),
+      say('ben', { t: 'guess', value: answer + 50 }),
+      say('ana', { t: 'advance' }), // -> betting
+    ])
+    const winning = state.round!.slots.find((s) => s.guess?.value === answer)!.index
+    state = run(state, [
+      say('ana', { t: 'bet', chip: 0, slotIndex: winning, wager: 0 }),
+      say('ana', { t: 'advance' }), // -> reveal
+    ])
+    expect(state.phase).toBe('reveal')
+    // Scored for real, so the tally has something to show.
+    expect(state.players.find((p) => p.id === 'ana')!.score).toBeGreaterThan(0)
+
+    state = run(state, [say('ana', { t: 'advance' })])
+    expect(state.round).toMatchObject({ number: 1, isPractice: false })
+    expect(state.players.map((p) => p.score)).toEqual([0, 0])
+  })
+
+  it('draws a practice question first, then real ones', () => {
+    const seen: boolean[] = []
+    const spy: EngineDeps = {
+      ...deps,
+      drawQuestion: (used, options) => {
+        seen.push(options.practice)
+        return deps.drawQuestion(used, options)
+      },
+    }
+    let state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'config', config: { practiceRound: true } }),
+    ])
+    for (let i = 0; i < 4; i++) state = reduce(state, say('ana', { t: 'advance' }), spy).state
+    expect(seen).toEqual([])
+    state = reduce(state, say('ana', { t: 'start' }), spy).state
+    for (let i = 0; i < 3; i++) state = reduce(state, say('ana', { t: 'advance' }), spy).state
+    expect(seen).toEqual([true, false])
+  })
+})
+
+describe('custom questions', () => {
+  const csv = [
+    'id,category,format,text,answer',
+    'p,Practice,plain,Warm up?,3',
+    '1,Food,plain,One?,1',
+    '2,Food,plain,Two?,2',
+    '3,Food,year,Three?,1999',
+  ].join('\n')
+
+  it('loads a set, turns practice on when it has a practice row, and caps the length', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'customQuestions', csv, fileName: 'mine.csv' }),
+    ])
+    expect(state.customQuestions?.questions).toHaveLength(4)
+    expect(state.config.practiceRound).toBe(true)
+    expect(state.config.shuffleQuestions).toBe(false)
+    expect(state.config.totalRounds).toBe(3)
+
+    const more = reduce(state, say('ana', { t: 'config', config: { totalRounds: 10 } }), deps)
+    expect(more.state.config.totalRounds).toBe(3)
+  })
+
+  it('never sends the questions themselves to a phone', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'customQuestions', csv, fileName: 'mine.csv' }),
+    ])
+    const view = viewFor(state, 'ben', clock)
+    expect(view.customQuestions).toMatchObject({ fileName: 'mine.csv', count: 3, practiceCount: 1 })
+    expect(JSON.stringify(view)).not.toContain('Warm up?')
+  })
+
+  it('loads the good rows and reports the skipped ones', () => {
+    const state = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'customQuestions', csv: `${csv}\n9,Food,plain,Bad?,lots`, fileName: 'mine.csv' }),
+    ])
+    expect(viewFor(state, 'ana', clock).customQuestions).toMatchObject({
+      count: 3,
+      skippedCount: 1,
+      skipped: [{ row: 6, message: expect.stringMatching(/not a number/) }],
+    })
+  })
+
+  it('refuses a file with nothing playable, and anyone but the host', () => {
+    const lobby = lobbyWith(['ana', 'ben'])
+    expect(
+      reduce(lobby, say('ana', { t: 'customQuestions', csv: '1,Food,plain,Q?,many' }), deps).error,
+    ).toMatch(/none of the rows/)
+    expect(reduce(lobby, say('ben', { t: 'customQuestions', csv }), deps).error).toMatch(/host/)
+  })
+
+  it('hands the set and the order setting to the draw, and can go back to the bank', () => {
+    const calls: DrawOptions[] = []
+    const spy: EngineDeps = {
+      ...deps,
+      drawQuestion: (used, options) => {
+        calls.push(options)
+        return deps.drawQuestion(used, options)
+      },
+    }
+    const loaded = run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'customQuestions', csv, fileName: 'mine.csv' }),
+      say('ana', { t: 'config', config: { shuffleQuestions: true } }),
+    ])
+    reduce(loaded, say('ana', { t: 'start' }), spy)
+    expect(calls[0]).toMatchObject({ practice: true, shuffle: true })
+    expect(calls[0]!.custom).toHaveLength(4)
+
+    const cleared = run(loaded, [say('ana', { t: 'customQuestions', csv: null })])
+    expect(cleared.customQuestions).toBeNull()
+    expect(cleared.config).toMatchObject({ practiceRound: false, shuffleQuestions: false })
+  })
+})
+
+describe('bringing back played questions', () => {
+  it('forgets what this room has played, for the host, in the lobby', () => {
+    const played = { ...lobbyWith(['ana', 'ben']), usedQuestionIds: ['q0', 'q1'] }
+    const reset = run(played, [say('ana', { t: 'resetPlayed' })])
+    expect(reset.usedQuestionIds).toEqual([])
+
+    expect(reduce(played, say('ben', { t: 'resetPlayed' }), deps).error).toMatch(/host/)
+    const midGame = run(played, [say('ana', { t: 'start' })])
+    expect(reduce(midGame, say('ana', { t: 'resetPlayed' }), deps).error).toMatch(/before/)
+  })
+})
+
+describe('leaving the lobby', () => {
+  it('frees the seat, and hands the host role on if the host goes', () => {
+    const lobby = lobbyWith(['ana', 'ben', 'cy'])
+    const benGone = run(lobby, [say('ben', { t: 'leave' })])
+    expect(benGone.players.map((p) => p.id)).toEqual(['ana', 'cy'])
+    expect(benGone.hostId).toBe('ana')
+
+    const hostGone = run(lobby, [say('ana', { t: 'leave' })])
+    expect(hostGone.hostId).toBe('ben')
+  })
+
+  it('is refused once the game has started', () => {
+    const playing = run(lobbyWith(['ana', 'ben']), [say('ana', { t: 'start' })])
+    expect(reduce(playing, say('ben', { t: 'leave' }), deps).error).toMatch(/before/)
   })
 })
 

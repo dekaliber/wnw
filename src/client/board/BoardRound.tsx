@@ -47,10 +47,17 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
   return (
     <main className="board board--round">
       <header className="board__head">
-        <span className="board__round">
-          {round.isTiebreak ? t.suddenDeath : t.questionN(round.number)}
-          {!round.isTiebreak && <em> {t.ofN(view.config.totalRounds)}</em>}
-        </span>
+        {round.isPractice ? (
+          <span className="board__round">
+            <span className="practice-badge practice-badge--board">{t.practiceQuestion}</span>
+            <em> {t.practiceNoScore}</em>
+          </span>
+        ) : (
+          <span className="board__round">
+            {round.isTiebreak ? t.suddenDeath : t.questionN(round.number)}
+            {!round.isTiebreak && <em> {t.ofN(view.config.totalRounds)}</em>}
+          </span>
+        )}
         {revealed ? (
           // Still there to refer back to, but the reveal needs the headline
           // space for the scoring.

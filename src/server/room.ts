@@ -10,7 +10,7 @@
 import { createGame, reduce, type Action, type EngineDeps } from '../shared/engine.ts'
 import { viewFor } from '../shared/view.ts'
 import type { ClientMessage, GameState, ServerMessage } from '../shared/types.ts'
-import { drawQuestion } from './questions.ts'
+import { clearResting, drawQuestion, restingCount } from './questions.ts'
 
 export type ConnectionId = string
 export type Send = (connectionId: ConnectionId, message: ServerMessage) => void
@@ -90,6 +90,9 @@ export class Room {
     }
     const { error } = this.apply({ type: 'message', playerId: connection.playerId, message })
     if (error) this.send(connectionId, { t: 'error', message: error })
+    // The engine has checked it is the host, in the lobby; the 24h rest lives
+    // on disk, out of the engine's reach, so it is cleared here.
+    else if (message.t === 'resetPlayed') clearResting()
     this.broadcast()
   }
 
@@ -134,16 +137,23 @@ export class Room {
   }
 
   broadcast(): void {
-    for (const connectionId of this.connections.keys()) this.pushTo(connectionId)
+    const resting = this.resting()
+    for (const connectionId of this.connections.keys()) this.pushTo(connectionId, resting)
   }
 
-  private pushTo(connectionId: ConnectionId): void {
+  private pushTo(connectionId: ConnectionId, resting = this.resting()): void {
     const connection = this.connections.get(connectionId)
     if (!connection) return
     this.send(connectionId, {
       t: 'state',
-      state: viewFor(this.state, connection.playerId, Date.now()),
+      state: viewFor(this.state, connection.playerId, Date.now(), resting),
     })
+  }
+
+  /** Read from disk, so only worked out where the host can act on it. */
+  private resting(): number {
+    if (this.state.phase !== 'lobby') return 0
+    return restingCount(this.state.customQuestions?.questions ?? null)
   }
 }
 

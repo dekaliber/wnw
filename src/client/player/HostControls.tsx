@@ -28,7 +28,17 @@ export function HostControls({
 
   return (
     <div className="hostbar">
-      <span className="hostbar__badge">{t.host}</span>
+      <span className="hostbar__id">
+        <span className="hostbar__badge">{t.host}</span>
+        {/* Anyone who drops out mid-game — or a board that needs reopening —
+            asks the host for the code, so it stays in view once the lobby's
+            big one is gone. The lobby shows it large already. */}
+        {view.phase !== 'lobby' && (
+          <span className="hostbar__room">
+            {t.room} <strong>{view.roomCode}</strong>
+          </span>
+        )}
+      </span>
 
       {restart && requestRestart && (
         <button

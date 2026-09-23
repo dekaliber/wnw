@@ -14,6 +14,7 @@ import {
   winningSlotIndex,
 } from './mat.ts'
 import { bucketFor, pickQuipId, seedFrom } from './quips.ts'
+import { isPractice, parseQuestionsCsv } from './customQuestions.ts'
 import { applyDeltas, bankAvailable, leaders, scoreRound } from './scoring.ts'
 import {
   DEFAULT_CONFIG,
@@ -38,6 +39,9 @@ export const PLAYER_COLORS = [
   '#e05fa0', // pink
 ]
 
+/** Skipped CSV rows kept for the host to read; `skippedCount` stays exact. */
+const MAX_SKIPPED_KEPT = 50
+
 export const MIN_PLAYERS = 2
 export const MAX_PLAYERS = 20
 
@@ -50,6 +54,12 @@ export interface EngineDeps {
 export interface DrawOptions {
   /** Skip questions whose answer is stated in imperial units. */
   excludeImperial: boolean
+  /** Drawing the practice question rather than a real one. */
+  practice: boolean
+  /** The host's uploaded questions, in file order; null for the built-in bank. */
+  custom: readonly Question[] | null
+  /** Only consulted for an uploaded set — the built-in bank is always random. */
+  shuffle: boolean
 }
 
 export type Action =
@@ -75,6 +85,7 @@ export function createGame(roomCode: string): GameState {
     phaseEndsAt: null,
     winnerIds: [],
     usedQuestionIds: [],
+    customQuestions: null,
   }
 }
 
@@ -215,7 +226,75 @@ function handleMessage(
     case 'config': {
       if (!isHost) return { state, error: 'Only the host can change settings.' }
       if (state.phase !== 'lobby') return { state, error: 'Settings are locked once the game starts.' }
-      return { state: { ...state, config: sanitizeConfig({ ...state.config, ...msg.config }) } }
+      return {
+        state: {
+          ...state,
+          config: sanitizeConfig({ ...state.config, ...msg.config }, state.customQuestions),
+        },
+      }
+    }
+
+    case 'customQuestions': {
+      if (!isHost) return { state, error: 'Only the host can change the questions.' }
+      if (state.phase !== 'lobby') return { state, error: 'Questions are locked once the game starts.' }
+
+      if (msg.csv === null) {
+        return {
+          state: {
+            ...state,
+            customQuestions: null,
+            config: { ...state.config, practiceRound: false, shuffleQuestions: false },
+          },
+        }
+      }
+
+      const parsed = parseQuestionsCsv(String(msg.csv))
+      if (!parsed.ok) {
+        const first = parsed.problems[0]!
+        return {
+          state,
+          error: first.row > 0 ? `Row ${first.row}: ${first.message}` : first.message,
+        }
+      }
+      const customQuestions = {
+        fileName: String(msg.fileName ?? 'questions.csv').slice(0, 80),
+        questions: parsed.questions,
+        skippedCount: parsed.skipped.length,
+        // Enough to fix a file by; a thousand-row mess needs no more detail.
+        skipped: parsed.skipped.slice(0, MAX_SKIPPED_KEPT),
+      }
+      // A file that brings its own practice question is asking to open with
+      // it; the host can still switch it off.
+      const config = sanitizeConfig(
+        {
+          ...state.config,
+          practiceRound: parsed.questions.some(isPractice),
+          shuffleQuestions: false,
+        },
+        customQuestions,
+      )
+      return { state: { ...state, customQuestions, config } }
+    }
+
+    case 'resetPlayed': {
+      if (!isHost) return { state, error: 'Only the host can do that.' }
+      if (state.phase !== 'lobby') return { state, error: 'Only before the game starts.' }
+      // The room's own history goes too: after a test run in the same room,
+      // an in-order set must start again from the top, not where the test
+      // left off. The server clears the 24h rest alongside this.
+      return { state: { ...state, usedQuestionIds: [] } }
+    }
+
+    case 'leave': {
+      // Lobby only: mid-game, a seat that vanishes takes its guesses, bets and
+      // points with it, and the round is built around who was there.
+      if (state.phase !== 'lobby') return { state, error: 'You can only leave before the game starts.' }
+      const players = state.players.filter((p) => p.id !== playerId)
+      const hostId =
+        state.hostId === playerId
+          ? (players.find((p) => p.connected)?.id ?? players[0]?.id ?? null)
+          : state.hostId
+      return { state: { ...state, players, hostId } }
     }
 
     case 'kick': {
@@ -249,7 +328,12 @@ function handleMessage(
       if (!everyoneReady(state.players, effectiveHostId(state))) {
         return { state, error: 'Not everyone is ready yet.' }
       }
-      return { state: beginRound({ ...state, players: clearReady(state.players) }, 1, false, deps) }
+      const ready = { ...state, players: clearReady(state.players) }
+      return {
+        state: state.config.practiceRound
+          ? beginRound(ready, 0, 'practice', deps)
+          : beginRound(ready, 1, 'regular', deps),
+      }
     }
 
     case 'guess': {
@@ -323,6 +407,11 @@ function handleMessage(
       return { state: { ...state, round: { ...state.round, locked } } }
     }
 
+    case 'advance': {
+      if (!isHost) return { state, error: 'Only the host can advance the game.' }
+      return { state: advancePhase(state, deps) }
+    }
+
     case 'tally': {
       if (!isHost) return { state, error: 'Only the host can move the tally on.' }
       const round = state.round
@@ -331,11 +420,6 @@ function handleMessage(
       // A stale double tap simply does nothing rather than erroring.
       if (round.tallied >= round.result.deltas.length) return { state }
       return { state: { ...state, round: { ...round, tallied: round.tallied + 1 } } }
-    }
-
-    case 'advance': {
-      if (!isHost) return { state, error: 'Only the host can advance the game.' }
-      return { state: advancePhase(state, deps) }
     }
 
     case 'rematch': {
@@ -357,13 +441,17 @@ function handleMessage(
   }
 }
 
-function sanitizeConfig(config: GameConfig): GameConfig {
+function sanitizeConfig(config: GameConfig, custom: GameState['customQuestions']): GameConfig {
+  // An uploaded set caps the game at its own length, so nothing repeats.
+  const available = custom ? custom.questions.filter((q) => !isPractice(q)).length : 20
   return {
-    totalRounds: clamp(Math.floor(config.totalRounds), 1, 20),
+    totalRounds: clamp(Math.floor(config.totalRounds), 1, Math.min(20, available)),
     guessSeconds: clamp(Math.floor(config.guessSeconds), 10, 300),
     betSeconds: clamp(Math.floor(config.betSeconds), 10, 300),
     timersEnabled: Boolean(config.timersEnabled),
     excludeImperial: Boolean(config.excludeImperial),
+    practiceRound: Boolean(config.practiceRound),
+    shuffleQuestions: Boolean(config.shuffleQuestions),
   }
 }
 
@@ -375,14 +463,19 @@ function clamp(n: number, lo: number, hi: number): number {
 // Phase machine
 // ---------------------------------------------------------------------------
 
+type RoundKind = 'regular' | 'tiebreak' | 'practice'
+
 function beginRound(
   state: GameState,
   number: number,
-  isTiebreak: boolean,
+  kind: RoundKind,
   deps: EngineDeps,
 ): GameState {
   const question = deps.drawQuestion(state.usedQuestionIds, {
     excludeImperial: state.config.excludeImperial,
+    practice: kind === 'practice',
+    custom: state.customQuestions?.questions ?? null,
+    shuffle: state.config.shuffleQuestions,
   })
   const round: Round = {
     number,
@@ -392,7 +485,8 @@ function beginRound(
     bets: [],
     locked: [],
     result: null,
-    isTiebreak,
+    isTiebreak: kind === 'tiebreak',
+    isPractice: kind === 'practice',
     tallied: 0,
   }
   return {
@@ -477,10 +571,21 @@ function revealAnswer(state: GameState): GameState {
 function afterReveal(state: GameState, deps: EngineDeps): GameState {
   if (!state.round) return state
 
+  // The practice points were real enough to watch being tallied; now they go
+  // back, so question 1 starts everyone where they started the practice.
+  if (state.round.isPractice) {
+    const deltas = new Map((state.round.result?.deltas ?? []).map((d) => [d.playerId, d.total]))
+    const players = state.players.map((p) => ({
+      ...p,
+      score: Math.max(0, p.score - (deltas.get(p.id) ?? 0)),
+    }))
+    return beginRound({ ...state, players }, 1, 'regular', deps)
+  }
+
   // A tiebreak already narrowed the field; go again only if it stayed tied.
   if (state.round.isTiebreak) {
     if (state.winnerIds.length > 1) {
-      return beginRound(state, state.round.number + 1, true, deps)
+      return beginRound(state, state.round.number + 1, 'tiebreak', deps)
     }
     return { ...state, phase: 'gameover', phaseEndsAt: null }
   }
@@ -488,12 +593,12 @@ function afterReveal(state: GameState, deps: EngineDeps): GameState {
   if (state.round.number >= state.config.totalRounds) {
     const tied = leaders(state.players)
     if (tied.length > 1) {
-      return beginRound({ ...state, winnerIds: tied }, state.round.number + 1, true, deps)
+      return beginRound({ ...state, winnerIds: tied }, state.round.number + 1, 'tiebreak', deps)
     }
     return { ...state, phase: 'gameover', winnerIds: tied, phaseEndsAt: null }
   }
 
-  return beginRound(state, state.round.number + 1, false, deps)
+  return beginRound(state, state.round.number + 1, 'regular', deps)
 }
 
 /**

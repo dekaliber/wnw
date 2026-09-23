@@ -85,6 +85,10 @@ export class QuestionLedger {
     return new Set(Object.keys(live))
   }
 
+  clear(): void {
+    this.store.write({})
+  }
+
   retire(id: string): void {
     const cutoff = this.now() - this.ttlMs
     const entries = this.store.read()
@@ -108,6 +112,13 @@ export interface PickOptions {
    * table cannot answer them, so serving one anyway defeats the point.
    */
   excludeImperial?: boolean
+  /**
+   * Take the first eligible question in bank order instead of a random one —
+   * for a host's own set, which they usually wrote in the order they want.
+   * The same fallbacks apply, so a question played in the last 24h is still
+   * skipped over rather than asked again.
+   */
+  sequential?: boolean
   random?: () => number
 }
 
@@ -121,7 +132,13 @@ export interface PickOptions {
 export function pickQuestion(bank: readonly Question[], options: PickOptions): Question {
   if (bank.length === 0) throw new Error('Question bank is empty')
 
-  const { roomUsedIds, retiredIds, excludeImperial = false, random = Math.random } = options
+  const {
+    roomUsedIds,
+    retiredIds,
+    excludeImperial = false,
+    sequential = false,
+    random = Math.random,
+  } = options
   const used = new Set(roomUsedIds)
 
   const eligible = excludeImperial ? bank.filter((q) => q.units !== 'imperial') : bank
@@ -132,5 +149,5 @@ export function pickQuestion(bank: readonly Question[], options: PickOptions): Q
 
   const pool = idealPool.length > 0 ? idealPool : unusedHere.length > 0 ? unusedHere : eligible
 
-  return pool[Math.floor(random() * pool.length)]!
+  return sequential ? pool[0]! : pool[Math.floor(random() * pool.length)]!
 }

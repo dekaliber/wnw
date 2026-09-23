@@ -1,5 +1,6 @@
 import type { ClientView } from '../../shared/types.ts'
 import { playerById } from '../format.ts'
+import { useT } from '../i18n/LocaleProvider.tsx'
 import { HostControls } from './HostControls.tsx'
 
 export function PhaseHeader({
@@ -13,7 +14,11 @@ export function PhaseHeader({
   title: string
   subtitle?: string
 }) {
+  const t = useT()
   const you = view.youId ? playerById(view, view.youId) : undefined
+  // Decided here rather than by each screen, so no phase of the practice
+  // round can forget to say it does not count.
+  const practice = Boolean(view.round?.isPractice)
 
   return (
     <>
@@ -21,7 +26,11 @@ export function PhaseHeader({
 
       <header className="phase-head">
         <div className="phase-head__left">
-          <span className="phase-head__title">{title}</span>
+          {practice ? (
+            <span className="practice-badge">{t.practiceQuestion}</span>
+          ) : (
+            <span className="phase-head__title">{title}</span>
+          )}
           {subtitle && <span className="phase-head__of">{subtitle}</span>}
         </div>
 

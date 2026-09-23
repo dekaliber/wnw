@@ -9,6 +9,7 @@
  *   2. Everyone else's guesses, until the mat is built.
  */
 
+import { isPractice } from './customQuestions.ts'
 import { effectiveHostId } from './engine.ts'
 import type {
   ClientQuestion,
@@ -26,8 +27,13 @@ function redactQuestion(question: Question, revealed: boolean): ClientQuestion {
   return revealed ? { ...rest, answer, note, noteFr } : { ...rest, answer: null }
 }
 
-export function viewFor(state: GameState, youId: string | null, now: number): ClientView {
-  const { round, ...rest } = state
+export function viewFor(
+  state: GameState,
+  youId: string | null,
+  now: number,
+  restingCount = 0,
+): ClientView {
+  const { round, customQuestions, ...rest } = state
 
   let clientRound: ClientRound | null = null
   if (round) {
@@ -47,5 +53,23 @@ export function viewFor(state: GameState, youId: string | null, now: number): Cl
 
   // Clients compare against whoever can actually drive the game, so the host
   // controls never vanish just because the host's phone is momentarily away.
-  return { ...rest, hostId: effectiveHostId(state), round: clientRound, youId, now }
+  // The uploaded set goes out as a count only: sending the questions would
+  // hand every phone the answers before a single round is played.
+  const customSummary = customQuestions && {
+    fileName: customQuestions.fileName,
+    count: customQuestions.questions.filter((q) => !isPractice(q)).length,
+    practiceCount: customQuestions.questions.filter(isPractice).length,
+    skippedCount: customQuestions.skippedCount,
+    skipped: customQuestions.skipped,
+  }
+
+  return {
+    ...rest,
+    hostId: effectiveHostId(state),
+    round: clientRound,
+    customQuestions: customSummary,
+    restingCount,
+    youId,
+    now,
+  }
 }

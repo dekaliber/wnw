@@ -4,6 +4,8 @@
  * or `client/` — it is pure logic so it can be unit-tested in milliseconds.
  */
 
+import type { CsvProblem } from './customQuestions.ts'
+
 export type Phase =
   | 'lobby'
   | 'question' // players writing guesses
@@ -122,6 +124,11 @@ export interface Round {
   /** Sudden-death round to break a final tie; does not count toward the 7. */
   isTiebreak: boolean
   /**
+   * A warm-up played before question 1. It runs every step for real — guess,
+   * bet, tally — and then its points are handed back before question 1.
+   */
+  isPractice: boolean
+  /**
    * How many players the host has moved past in the board's scoring
    * playthrough. Held here rather than on the board so the host's phone can
    * drive it — the board is a display, and often nobody can reach it.
@@ -141,14 +148,45 @@ export interface GameConfig {
    * the guess, and a unit conversion nobody signed up for.
    */
   excludeImperial: boolean
+  /** Open with a practice question that does not count. */
+  practiceRound: boolean
+  /**
+   * Draw an uploaded set in random order. Off by default, since a host who
+   * wrote their own questions usually wrote them in the order they want.
+   * The built-in bank is always shuffled.
+   */
+  shuffleQuestions: boolean
 }
 
 export const DEFAULT_CONFIG: GameConfig = {
   totalRounds: 7,
   guessSeconds: 45,
   betSeconds: 30,
-  timersEnabled: true,
+  timersEnabled: false,
   excludeImperial: false,
+  practiceRound: false,
+  shuffleQuestions: false,
+}
+
+/** A host's uploaded question set, replacing the built-in bank for this room. */
+export interface CustomQuestionSet {
+  fileName: string
+  questions: Question[]
+  /** Rows left out because they failed a check, so the host can fix them. */
+  skippedCount: number
+  /** The first few of those, with the reason — enough to fix the file by. */
+  skipped: CsvProblem[]
+}
+
+/** What clients may know about the uploaded set — never the answers. */
+export interface CustomSetSummary {
+  fileName: string
+  /** Questions that can be played as real rounds. */
+  count: number
+  /** Rows in the "Practice" category. */
+  practiceCount: number
+  skippedCount: number
+  skipped: CsvProblem[]
 }
 
 export interface GameState {
@@ -164,6 +202,8 @@ export interface GameState {
   winnerIds: string[]
   /** Questions already used this game, so a rematch does not repeat them. */
   usedQuestionIds: string[]
+  /** null plays from the built-in bank. */
+  customQuestions: CustomQuestionSet | null
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +216,10 @@ export type ClientMessage =
   | { t: 'watch'; roomCode: string }
   | { t: 'rename'; name: string }
   | { t: 'config'; config: Partial<GameConfig> }
+  /** Raw CSV text, parsed on the server; null goes back to the built-in bank. */
+  | { t: 'customQuestions'; csv: string | null; fileName?: string }
+  /** Forget what has been played, so every question is available again. */
+  | { t: 'resetPlayed' }
   | { t: 'ready'; ready: boolean }
   | { t: 'locale'; locale: Locale }
   | { t: 'start' }
@@ -188,6 +232,8 @@ export type ClientMessage =
   /** Host only, during the reveal: move the board's tally on to the next player. */
   | { t: 'tally' }
   | { t: 'kick'; playerId: string }
+  /** Walk out of the lobby, freeing the seat instead of leaving it "away". */
+  | { t: 'leave' }
   | { t: 'rematch' }
 
 export type ServerMessage =
@@ -210,8 +256,14 @@ export type ErrorCode = 'room-not-found'
  * strips other players' guesses entirely — "hidden" client-side would be
  * visible in the network tab, which would quietly ruin the game.
  */
-export interface ClientView extends Omit<GameState, 'round'> {
+export interface ClientView extends Omit<GameState, 'round' | 'customQuestions'> {
   round: ClientRound | null
+  customQuestions: CustomSetSummary | null
+  /**
+   * How many of this room's questions are resting after being played in the
+   * last 24h — only counted in the lobby, where the host can bring them back.
+   */
+  restingCount: number
   /** Who this socket is. null for the TV board. */
   youId: string | null
   /** Server clock at send time, so clients can correct for drift. */

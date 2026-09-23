@@ -195,12 +195,19 @@ export function useGame(): Game {
   )
 
   const leave = useCallback(() => {
+    // Anything queued is still sent before the close goes out, so a parting
+    // message sent just before this still arrives.
     closing.current = true
     intent.current = { kind: 'idle' }
     if (retryTimer.current) clearTimeout(retryTimer.current)
     socket.current?.close()
     socket.current = null
     forgetRoom()
+    // A `?room=` left in the address would pre-fill the code just walked away
+    // from, and hide "start a new game" as if they had arrived by invitation.
+    if (new URLSearchParams(location.search).has('room')) {
+      history.replaceState(null, '', location.pathname)
+    }
     setView(null)
     setStatus('closed')
   }, [])
