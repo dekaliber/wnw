@@ -764,6 +764,13 @@ input {
   vertical-align: middle;
 }
 
+.board__round .practice-badge {
+  /* Sit the pill's own text on the line, beside "Doesn't count", instead of
+     centring the whole pill — which floated the text above the baseline. */
+  vertical-align: baseline;
+  margin-right: 0.3em;
+}
+
 .practice-badge--board {
   font-size: clamp(0.8rem, 1.4vw, 1.1rem);
   padding: 0.3em 0.9em;
@@ -1465,6 +1472,15 @@ input {
   border-color: var(--lose);
 }
 
+.yours__title {
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .yours__total {
   display: block;
   font-size: 2.4rem;
@@ -1572,15 +1588,18 @@ input {
   position: relative;
   border-color: var(--win);
   background: rgb(74 222 128 / 0.3);
-  transform: translateY(-4px);
-  box-shadow: 0 0 0 3px var(--win), 0 0 28px rgb(74 222 128 / 0.45), 0 14px 34px rgb(0 0 0 / 0.5);
+  /* Same outline as the other slots, so its top edge lines up with theirs:
+     the heavier ring is drawn inside the edge rather than around it, and the
+     slot is no longer lifted. The glow still reaches outside. */
+  box-shadow: inset 0 0 0 3px var(--win), 0 0 28px rgb(74 222 128 / 0.45), 0 14px 34px rgb(0 0 0 / 0.5);
 }
 
 .slot__winner-pill {
   position: absolute;
   top: 0;
   left: 50%;
-  transform: translate(-50%, -55%);
+  /* Centred on the slot's top border. */
+  transform: translate(-50%, -50%);
   padding: 2px 10px;
   border-radius: 999px;
   background: var(--win);
@@ -1598,7 +1617,7 @@ input {
 @keyframes pill-in {
   from {
     opacity: 0;
-    transform: translate(-50%, -55%) scale(2);
+    transform: translate(-50%, -50%) scale(2);
   }
 }
 
@@ -2022,6 +2041,16 @@ input {
   max-width: 30ch;
 }
 
+/* 50% wider while betting: the mat takes the height there, so a long question
+   is better spread across the width than stacked four lines deep. */
+.board--betting .board__question {
+  max-width: 33ch;
+}
+
+.board--betting .board__question--alt {
+  max-width: 45ch;
+}
+
 .quip--alt {
   font-size: clamp(0.85rem, 1.6vw, 1.35rem);
   opacity: 0.75;
@@ -2055,6 +2084,21 @@ input {
 
 .board__counter--bet {
   min-height: 1.4em;
+}
+
+.board__bet-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Matches the scoring teaser's "Waiting for the host…" line. */
+.board__host-hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: clamp(0.8rem, 1.3vw, 1.05rem);
+  animation: rise 0.3s ease backwards;
 }
 
 .board__tokens {
@@ -2128,7 +2172,6 @@ input {
   color: var(--accent);
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  animation: rise 0.3s ease;
 }
 
 .board__note {
@@ -2258,12 +2301,57 @@ input {
 
 /* The band above the mat. Its height is held steady for the whole reveal so
    the mat does not jump as lines arrive and players change. */
+/* Held invisible until its delay, set inline per element, then eases in.
+   `backwards` keeps it hidden during the delay. Reduced motion keeps the
+   pacing — which is about attention, not movement — and drops the slide. */
+.reveal-step {
+  animation: rise 0.35s ease backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-step {
+    animation-name: reveal-fade;
+  }
+}
+
+@keyframes reveal-fade {
+  from {
+    opacity: 0;
+  }
+}
+
 .board__tally {
   display: flex;
   align-items: center;
   justify-content: center;
   width: min(100%, 1500px);
   min-height: clamp(96px, 13vh, 150px);
+}
+
+.teaser {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  animation: rise 0.45s ease backwards;
+}
+
+.teaser__title {
+  margin: 0;
+  font-size: clamp(1.1rem, 2.2vw, 1.9rem);
+  font-weight: 800;
+}
+
+.teaser__hint {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: clamp(0.8rem, 1.3vw, 1.05rem);
+  transition: opacity 0.3s ease;
+}
+
+/* Kept in the layout as it fades, so the title does not jump. */
+.teaser__hint.is-gone {
+  opacity: 0;
 }
 
 .tally {
@@ -2372,9 +2460,22 @@ input {
   align-items: center;
   gap: 8px;
   font-weight: 700;
-  overflow: hidden;
   white-space: nowrap;
+}
+
+/* The slot's label gives way first, so the odds are never pushed off. */
+.tally__slot {
+  min-width: 0;
+  overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.tally__odds {
+  flex: none;
+  margin-left: auto;
+  color: var(--text-dim);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .tally__chip {
@@ -2574,6 +2675,15 @@ input {
 
 .board__head {
   gap: 24px;
+}
+
+/* Once the question moves up here, the row lines up on the text baseline —
+   the round label, the practice pill's text and the question's first line —
+   rather than centring boxes of different heights. Only during the reveal:
+   the rest of the round has the circular timer on the right, which should
+   stay centred. */
+.board__head--reveal {
+  align-items: baseline;
 }
 
 .board__head-question {

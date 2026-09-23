@@ -134,6 +134,12 @@ export interface Round {
    * drive it — the board is a display, and often nobody can reach it.
    */
   tallied: number
+  /**
+   * Whether the host has started the board's scoring playthrough. Off at every
+   * reveal, so the room gets to take in the answer before anyone's sums start
+   * competing with it, and the host decides when that moment has passed.
+   */
+  scoring: boolean
 }
 
 export interface GameConfig {
@@ -231,6 +237,8 @@ export type ClientMessage =
   | { t: 'advance' }
   /** Host only, during the reveal: move the board's tally on to the next player. */
   | { t: 'tally' }
+  /** Host only, during the reveal: open the board's scoring playthrough. */
+  | { t: 'startScoring' }
   | { t: 'kick'; playerId: string }
   /** Walk out of the lobby, freeing the seat instead of leaving it "away". */
   | { t: 'leave' }

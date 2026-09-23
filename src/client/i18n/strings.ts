@@ -130,7 +130,9 @@ const en = {
   fromYourChips: (n: number) => `+${n} from your chips`,
   guessWonSlot: (n: number) => `+${n} your guess won the slot`,
   lostOnRaise: (n: number) => `${n} on the raise`,
-  chipsReturned: 'Chips returned. No damage.',
+  chipsReturned: 'Wager chips returned. Better luck next time.',
+  yourWinningsThisRound: 'Your winnings this round',
+  yourLossesThisRound: 'Your losses this round',
   continueLabel: 'Continue',
   finalScores: 'Final scores',
   nextQuestion: (n: number) => `Question ${n}`,
@@ -203,7 +205,7 @@ const en = {
   tallyBetOn: (value: string) => `Bet on ${value}`,
   // "Wager chips" because they are the part of a bet that always comes back.
   tallyBet: (n: number) => `${n} wager chip${n === 1 ? '' : 's'}`,
-  tallyRaised: (n: number) => `raised ${n}`,
+  tallyRaised: (n: number) => `raise of ${n}`,
   tallyPays: (odds: number) => `pays ${odds} to 1`,
   tallyWon: (n: number) => `won ${n}`,
   // "To the bank" because playtesters assumed a loss went to another player.
@@ -217,6 +219,8 @@ const en = {
   tallyBonus: (value: string) => `wrote the winning guess, ${value}`,
   tallyBonusTitle: 'Bonus',
   tallyNextPlayer: 'Next player',
+  proceedToScoring: 'Proceed to scoring',
+  scoringTeaser: 'Let’s see how everyone did…',
   tallyShowStandings: 'Show standings',
 
   // -- connection --------------------------------------------------------
@@ -347,7 +351,9 @@ const fr: typeof en = {
   fromYourChips: (n: number) => `+${n} grâce à vos jetons`,
   guessWonSlot: (n: number) => `+${n} votre réponse a remporté la case`,
   lostOnRaise: (n: number) => `${n} sur la mise`,
-  chipsReturned: 'Jetons rendus. Aucun dégât.',
+  chipsReturned: 'Jetons de pari rendus. Plus de chance la prochaine fois.',
+  yourWinningsThisRound: 'Vos gains de la manche',
+  yourLossesThisRound: 'Vos pertes de la manche',
   continueLabel: 'Continuer',
   finalScores: 'Scores finaux',
   nextQuestion: (n: number) => `Question ${n}`,
@@ -420,7 +426,7 @@ const fr: typeof en = {
   tallyBetOn: (value: string) => `Pari sur ${value}`,
   // « Miser » is already what the phone calls a raise, so the chips are counted instead.
   tallyBet: (n: number) => `${n} jeton${n > 1 ? 's' : ''} de pari`,
-  tallyRaised: (n: number) => `mise ${n}`,
+  tallyRaised: (n: number) => `mise de ${n}`,
   tallyPays: (odds: number) => `paie ${odds} contre 1`,
   tallyWon: (n: number) => `gagne ${n}`,
   tallyLost: (n: number) => `perd ${n} au profit de la banque`,
@@ -432,6 +438,8 @@ const fr: typeof en = {
   tallyBonus: (value: string) => `a écrit la réponse gagnante, ${value}`,
   tallyBonusTitle: 'Bonus',
   tallyNextPlayer: 'Joueur suivant',
+  proceedToScoring: 'Passer au décompte',
+  scoringTeaser: 'Voyons comment chacun s’en est sorti…',
   tallyShowStandings: 'Voir le classement',
 
   // -- connection --------------------------------------------------------

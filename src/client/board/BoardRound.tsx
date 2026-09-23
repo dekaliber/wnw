@@ -7,8 +7,13 @@ import { useCountdown } from '../useCountdown.ts'
 import { boardLocales, boardStrings, inEachLocale } from './useBoardLocales.ts'
 import { useTimerChime } from './useTimerChime.ts'
 import { ScoreStrip, type StripEntry } from './ScoreStrip.tsx'
-import { RoundSummary, ScoringTally, useScoringPlaythrough } from './ScoringPlaythrough.tsx'
-import { standingsBefore } from './scoringTimeline.ts'
+import {
+  RoundSummary,
+  ScoringTally,
+  ScoringTeaser,
+  useScoringPlaythrough,
+} from './ScoringPlaythrough.tsx'
+import { REVEAL_STEP_MS, standingsBefore } from './scoringTimeline.ts'
 
 export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
   const round = view.round!
@@ -45,8 +50,8 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
   const notes = inEachLocale(locales, (l) => questionNote(round.question, l))
 
   return (
-    <main className="board board--round">
-      <header className="board__head">
+    <main className={`board board--round board--${view.phase}`}>
+      <header className={`board__head ${revealed ? 'board__head--reveal' : ''}`}>
         {round.isPractice ? (
           <span className="board__round">
             <span className="practice-badge practice-badge--board">{t.practiceQuestion}</span>
@@ -116,13 +121,41 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
         </section>
       ) : (
         <>
-          {revealed && !round.isTiebreak && (
-            // Fixed-height band, so the mat does not jump as lines arrive.
-            <section className="board__tally">
-              {playthrough && tallying ? (
-                <ScoringTally view={view} frame={playthrough} t={t} />
-              ) : (
-                <RoundSummary view={view} t={t} />
+          {/* The reveal comes in a step at a time — mat, then the answer, the
+              quip, and only then the tally — so the room reads one thing at
+              once instead of everything landing together. */}
+          {revealed && (
+            <section className="board__reveal">
+              <p
+                className="board__answer-label reveal-step"
+                style={stepDelay(REVEAL_STEP_MS.answer)}
+              >
+                {t.boardAnswer}
+              </p>
+              <p className="board__answer reveal-step" style={stepDelay(REVEAL_STEP_MS.answer)}>
+                {formatAnswer(round.question.answer ?? 0, round.question.format)}
+              </p>
+              {quips.map((quip, i) =>
+                quip ? (
+                  <p
+                    key={quip}
+                    className={`quip quip--board reveal-step ${i > 0 ? 'quip--alt' : ''}`}
+                    style={stepDelay(REVEAL_STEP_MS.quip)}
+                  >
+                    {quip}
+                  </p>
+                ) : null,
+              )}
+              {notes.map((note, i) =>
+                note ? (
+                  <p
+                    key={note}
+                    className={`board__note reveal-step ${i > 0 ? 'board__note--alt' : ''}`}
+                    style={stepDelay(REVEAL_STEP_MS.quip)}
+                  >
+                    {note}
+                  </p>
+                ) : null,
               )}
             </section>
           )}
@@ -150,32 +183,32 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
           />
 
           {revealed ? (
-            <section className="board__reveal">
-              <p className="board__answer-label">{t.boardAnswer}</p>
-              <p className="board__answer">
-                {formatAnswer(round.question.answer ?? 0, round.question.format)}
-              </p>
-              {quips.map((quip, i) =>
-                quip ? (
-                  <p key={quip} className={`quip quip--board ${i > 0 ? 'quip--alt' : ''}`}>
-                    {quip}
-                  </p>
-                ) : null,
-              )}
-              {notes.map((note, i) =>
-                note ? (
-                  <p key={note} className={`board__note ${i > 0 ? 'board__note--alt' : ''}`}>
-                    {note}
-                  </p>
-                ) : null,
-              )}
-            </section>
+            !round.isTiebreak && (
+              // Fixed-height band, so the score strip does not jump as lines arrive.
+              <section className="board__tally reveal-step" style={stepDelay(REVEAL_STEP_MS.tally)}>
+                {playthrough?.intro ? (
+                  <ScoringTeaser waiting={!round.scoring} t={t} />
+                ) : playthrough && tallying ? (
+                  <ScoringTally view={view} frame={playthrough} t={t} />
+                ) : (
+                  <RoundSummary view={view} t={t} />
+                )}
+              </section>
+            )
           ) : (
-            <p className="board__counter board__counter--bet">
-              {waitingOn.length === 0
-                ? t.boardAllIn
-                : t.waitingOnNames(waitingOn.map((p) => p.name).join(', '))}
-            </p>
+            <div className="board__bet-status">
+              <p className="board__counter board__counter--bet">
+                {waitingOn.length === 0
+                  ? t.boardAllIn
+                  : t.waitingOnNames(waitingOn.map((p) => p.name).join(', '))}
+              </p>
+              {/* Betting only ends when the host reveals the answer, so once
+                  everyone is in, say who the room is waiting on — the same
+                  line the scoring teaser uses. */}
+              {waitingOn.length === 0 && (
+                <p className="board__host-hint">{t.waitingForHostShort}</p>
+              )}
+            </div>
           )}
         </>
       )}
@@ -184,3 +217,6 @@ export function BoardRound({ game, view }: { game: Game; view: ClientView }) {
     </main>
   )
 }
+
+/** Holds a reveal element back until its turn; see `.reveal-step`. */
+const stepDelay = (ms: number) => ({ animationDelay: `${ms}ms` })

@@ -415,10 +415,19 @@ function handleMessage(
       return { state: advancePhase(state, deps) }
     }
 
+    case 'startScoring': {
+      if (!isHost) return { state, error: 'Only the host can start the scoring.' }
+      const round = state.round
+      // Already open is a stale double tap: nothing to do, and nothing to say.
+      if (state.phase !== 'reveal' || !round?.result || round.scoring) return { state }
+      return { state: { ...state, round: { ...round, scoring: true } } }
+    }
+
     case 'tally': {
       if (!isHost) return { state, error: 'Only the host can move the tally on.' }
       const round = state.round
-      if (state.phase !== 'reveal' || !round?.result) return { state }
+      // Nothing to move on until the playthrough has been opened.
+      if (state.phase !== 'reveal' || !round?.result || !round.scoring) return { state }
       // One past the last player means "show standings"; nothing beyond that.
       // A stale double tap simply does nothing rather than erroring.
       if (round.tallied >= round.result.deltas.length) return { state }
@@ -491,6 +500,7 @@ function beginRound(
     isTiebreak: kind === 'tiebreak',
     isPractice: kind === 'practice',
     tallied: 0,
+    scoring: false,
   }
   return {
     ...state,

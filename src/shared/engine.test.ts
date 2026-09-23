@@ -739,7 +739,7 @@ describe('the board tally', () => {
 
   it('is moved on by the host, one player at a time, and stops at standings', () => {
     const tap = say('ana', { t: 'tally' })
-    const state = run(atReveal(), [tap, tap, tap, tap])
+    const state = run(atReveal(), [say('ana', { t: 'startScoring' }), tap, tap, tap, tap])
     // Two players: past the first, past the second (standings), then no further.
     expect(state.round!.tallied).toBe(2)
   })
@@ -762,5 +762,37 @@ describe('the board tally', () => {
     const state = run(atReveal(), [say('ana', { t: 'tally' }), say('ana', { t: 'advance' })])
     expect(state.round!.number).toBe(2)
     expect(state.round!.tallied).toBe(0)
+  })
+})
+
+describe('opening the scoring', () => {
+  const atReveal = () =>
+    run(lobbyWith(['ana', 'ben']), [
+      say('ana', { t: 'start' }),
+      say('ana', { t: 'guess', value: 90 }),
+      say('ben', { t: 'guess', value: 110 }),
+      say('ana', { t: 'advance' }),
+      say('ana', { t: 'advance' }),
+    ])
+
+  it('starts closed at every reveal, and is opened by the host alone', () => {
+    const state = atReveal()
+    expect(state.round!.scoring).toBe(false)
+    expect(reduce(state, say('ben', { t: 'startScoring' }), deps).error).toMatch(/host/)
+    expect(run(state, [say('ana', { t: 'startScoring' })]).round!.scoring).toBe(true)
+  })
+
+  it('holds the tally until it is open', () => {
+    const closed = run(atReveal(), [say('ana', { t: 'tally' })])
+    expect(closed.round!.tallied).toBe(0)
+    const open = run(atReveal(), [say('ana', { t: 'startScoring' }), say('ana', { t: 'tally' })])
+    expect(open.round!.tallied).toBe(1)
+  })
+
+  it('treats a second tap as nothing, and closes again for the next question', () => {
+    const open = run(atReveal(), [say('ana', { t: 'startScoring' })])
+    expect(reduce(open, say('ana', { t: 'startScoring' }), deps).state).toBe(open)
+    const next = run(open, [say('ana', { t: 'advance' })])
+    expect(next.round!.scoring).toBe(false)
   })
 })

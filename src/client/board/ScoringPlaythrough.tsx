@@ -6,6 +6,7 @@ import type { Strings } from '../i18n/strings.ts'
 import { prefersReducedMotion, RollingNumber, signed } from './motion.tsx'
 import {
   BEAT_MS,
+  SCORING_LEAD_MS,
   buildTimeline,
   frameAt,
   resumeStep,
@@ -20,6 +21,8 @@ interface Run {
   scorings: PlayerScoring[]
   timeline: Beat[]
   step: number
+  /** When this reveal arrived, for holding the intro until the band is up. */
+  startedAt: number
 }
 
 export interface Playthrough extends PlaythroughFrame {
@@ -46,6 +49,7 @@ export function useScoringPlaythrough(view: ClientView): Playthrough | null {
       : null
 
   const tallied = round?.tallied ?? 0
+  const scoring = round?.scoring ?? false
   const [run, setRun] = useState<Run | null>(null)
 
   // Derived during render rather than in an effect, so the very first reveal
@@ -64,7 +68,13 @@ export function useScoringPlaythrough(view: ClientView): Playthrough | null {
       const timeline = buildTimeline(scorings)
       // A board opened (or reloaded) mid-tally picks up with the player the
       // host is on, rather than replaying everyone the room has already seen.
-      active = { key, scorings, timeline, step: resumeStep(timeline, tallied) }
+      active = {
+        key,
+        scorings,
+        timeline,
+        step: resumeStep(timeline, tallied),
+        startedAt: Date.now(),
+      }
     }
     setRun(active)
   }
@@ -82,12 +92,36 @@ export function useScoringPlaythrough(view: ClientView): Playthrough | null {
       return
     }
 
+    // Held until the host opens the scoring from their phone. Then the teaser
+    // lingers a moment — and never leaves before the band has even appeared,
+    // for a host who taps the instant the answer lands.
+    if (beat.kind === 'intro') {
+      if (!scoring) return
+      const elapsed = Date.now() - active.startedAt
+      const id = setTimeout(next, Math.max(BEAT_MS.intro - elapsed, SCORING_LEAD_MS))
+      return () => clearTimeout(id)
+    }
+
     const id = setTimeout(next, BEAT_MS[beat.kind])
     return () => clearTimeout(id)
-  }, [active?.key, active?.step, tallied])
+  }, [active?.key, active?.step, tallied, scoring])
 
   if (!active) return null
   return { ...frameAt(active.scorings, active.timeline, active.step), scorings: active.scorings }
+}
+
+/**
+ * What the tally band holds between the reveal and the host opening the
+ * scoring: a heads-up of what is coming, and — until they tap — who the room
+ * is waiting on, so a board that has gone still does not look stuck.
+ */
+export function ScoringTeaser({ waiting, t }: { waiting: boolean; t: Strings }) {
+  return (
+    <section className="teaser">
+      <p className="teaser__title">{t.scoringTeaser}</p>
+      <p className={`teaser__hint ${waiting ? '' : 'is-gone'}`}>{t.waitingForHostShort}</p>
+    </section>
+  )
 }
 
 /** The one player currently being settled, laid out as a worked sum. */
@@ -134,20 +168,24 @@ export function ScoringTally({
                 settled ? (line.won ? 'is-won' : 'is-lost') : 'is-pending',
               ].join(' ')}
             >
+              {/* The odds sit up here, beside what was backed, so the second
+                  line only has to hold the stake — a bonus tile alongside
+                  leaves too little room for all three on one line. */}
               <span className="tally__on">
                 <span className="tally__chip" style={{ background: player?.color }}>
                   {line.stake}
                 </span>
-                {describeSlot(view, round.slots[line.slotIndex], t)}
+                <span className="tally__slot">
+                  {describeSlot(view, round.slots[line.slotIndex], t)}
+                </span>
+                <span className="tally__odds">{t.tallyPays(line.odds)}</span>
               </span>
+              {/* "+" rather than a separator: the chips and the raise are the
+                  two parts of the stake the chip badge shows in total. */}
               <span className="tally__math">
-                {[
-                  t.tallyBet(line.chips.length),
-                  line.wager > 0 && t.tallyRaised(line.wager),
-                  t.tallyPays(line.odds),
-                ]
+                {[t.tallyBet(line.chips.length), line.wager > 0 && t.tallyRaised(line.wager)]
                   .filter(Boolean)
-                  .join(' · ')}
+                  .join(' + ')}
               </span>
               <span className="tally__result">
                 {!settled ? (

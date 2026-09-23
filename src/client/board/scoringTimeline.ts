@@ -54,10 +54,30 @@ export type Beat =
   | { kind: 'reorder' }
   | { kind: 'done' }
 
+/**
+ * When each part of the board's reveal appears, in ms after the answer is
+ * revealed. Staggered so the room's eyes go to one thing at a time: the mat is
+ * already up from betting, then the answer, the quip just behind it, and the
+ * tally a beat later.
+ */
+export const REVEAL_STEP_MS = {
+  answer: 500,
+  quip: 700,
+  tally: 1700,
+} as const
+
+/**
+ * Once the host opens the scoring, how long the "Let's see how everyone did"
+ * teaser lingers before the first player — long enough to read as a
+ * transition rather than a flicker.
+ */
+export const SCORING_LEAD_MS = 600
+
 /** How long each timed beat holds before the next. Tuned for a room reading a TV. */
 export const BEAT_MS: Record<Exclude<Beat['kind'], 'pause'>, number> = {
-  // Lets the answer land before anyone's sums start competing with it.
-  intro: 1500,
+  // The least the intro holds, from the reveal: the tally band must have come
+  // into view first. Beyond that it waits for the host (`round.scoring`).
+  intro: REVEAL_STEP_MS.tally,
   enter: 700,
   bet: 450,
   resolve: 1100,
@@ -162,6 +182,8 @@ export interface PlaythroughFrame {
   flying: boolean
   /** Holding for the host to move on from their phone. */
   waiting: boolean
+  /** Before the first player: the band shows a teaser instead of a sum. */
+  intro: boolean
   /** Nobody left after this player, so moving on re-sorts the strip. */
   lastPlayer: boolean
   /** Players whose result has reached the strip. */
@@ -188,6 +210,7 @@ export function frameAt(scorings: PlayerScoring[], timeline: Beat[], step: numbe
     totalShown: mine.some((b) => b.kind === 'total'),
     flying: beat.kind === 'fly',
     waiting: beat.kind === 'pause',
+    intro: beat.kind === 'intro',
     lastPlayer: index !== null && index === scorings.length - 1,
     landed,
     reordered: past.some((b) => b.kind === 'reorder'),

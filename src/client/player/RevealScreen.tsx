@@ -1,6 +1,6 @@
 import type { ClientView } from '../../shared/types.ts'
 import { formatAnswer, playerById, standings, tallyLength } from '../format.ts'
-import { localisedQuip, questionNote, questionText } from '../i18n/content.ts'
+import { questionNote, questionText } from '../i18n/content.ts'
 import { useLocale } from '../i18n/LocaleProvider.tsx'
 import type { Game } from '../net.ts'
 import { HostControls } from './HostControls.tsx'
@@ -18,7 +18,6 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
   const tallyTotal = round.isTiebreak ? 0 : tallyLength(view)
   const tallying = round.tallied < tallyTotal
 
-  const quip = localisedQuip(result.quipId, locale)
   const note = questionNote(round.question, locale)
   const question = <p className="reveal__question">{questionText(round.question, locale)}</p>
 
@@ -60,7 +59,8 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
       <p className="reveal__answer">
         {formatAnswer(round.question.answer ?? 0, round.question.format)}
       </p>
-      {quip && <p className="quip">{quip}</p>}
+      {/* No quip here: it lands better on the board, where the whole room
+          hears it at once. */}
       {note && <p className="reveal__note">{note}</p>}
 
       <p className="reveal__won">
@@ -74,6 +74,9 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
 
       {mine && (
         <section className={`yours ${mine.total > 0 ? 'yours--up' : mine.total < 0 ? 'yours--down' : ''}`}>
+          <span className="yours__title">
+            {mine.total < 0 ? t.yourLossesThisRound : t.yourWinningsThisRound}
+          </span>
           <span className="yours__total">
             {mine.total > 0 ? '+' : ''}
             {mine.total}
@@ -98,7 +101,16 @@ export function RevealScreen({ game, view }: { game: Game; view: ClientView }) {
         ))}
       </ol>
 
-      {isHost && tallying ? (
+      {/* First the room takes in the answer; the host opens the board's
+          scoring when they are ready, then steps through it player by player. */}
+      {isHost && tallyTotal > 0 && !round.scoring ? (
+        <button
+          className="btn btn--primary btn--fixed"
+          onClick={() => game.send({ t: 'startScoring' })}
+        >
+          {t.proceedToScoring} ▸
+        </button>
+      ) : isHost && tallying ? (
         <button
           className="btn btn--primary btn--fixed btn--tally"
           onClick={() => game.send({ t: 'tally' })}
